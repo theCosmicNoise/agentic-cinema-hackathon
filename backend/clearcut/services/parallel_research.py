@@ -19,7 +19,9 @@ from typing import Literal
 
 from parallel import Parallel
 
+from clearcut.core.config import get_settings
 from clearcut.core.models import Citation, ResearchEvidence
+from clearcut.services.cache import DiskCache
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +39,7 @@ class ParallelResearchService:
             )
         self._client = Parallel(api_key=key)
         self._default_mode: SearchMode = default_mode
+        self._cache = DiskCache(get_settings().data_dir, "parallel")
         self._lock = threading.Lock()
         self.search_calls = 0
         self.task_calls = 0
@@ -62,6 +65,13 @@ class ParallelResearchService:
             queries=queries,
             processor=f"search:{mode}",
         )
+
+        ck = self._cache.key(
+            {"kind": "search", "objective": objective, "queries": queries,
+             "mode": mode, "max_chars": max_chars_total}
+        )
+        if (cached := self._cache.get(ck)) is not None:
+            return ResearchEvidence.model_validate(cached)
 
         try:
             resp = self._client.search(
@@ -89,6 +99,7 @@ class ParallelResearchService:
             )
 
         evidence.findings = _summarise(evidence.citations)
+        self._cache.put(ck, evidence.model_dump())
         return evidence
 
     # ------------------------------------------------------------------ #
@@ -115,6 +126,12 @@ class ParallelResearchService:
             processor=f"task:{processor}",
             escalated=True,
         )
+
+        ck = self._cache.key(
+            {"kind": "task", "objective": objective, "processor": processor}
+        )
+        if (cached := self._cache.get(ck)) is not None:
+            return ResearchEvidence.model_validate(cached)
 
         try:
             run = self._client.task_run.create(input=objective, processor=processor)
@@ -145,6 +162,10 @@ class ParallelResearchService:
                 )
 
         return evidence
+
+    @property
+    def cache_stats(self) -> dict[str, int]:
+        return self._cache.stats
 
     @property
     def total_calls(self) -> int:

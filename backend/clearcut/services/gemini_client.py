@@ -34,6 +34,7 @@ from google.genai import types
 from pydantic import BaseModel
 
 from clearcut.core.config import get_settings
+from clearcut.services.cache import DiskCache
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,12 @@ class GeminiClient:
         else:
             self._client = genai.Client(api_key=s.require_google(), http_options=http)
         self._chain = list(s.gemini_fallbacks)
+        self._cache = DiskCache(s.data_dir, "gemini")
         self._lock = threading.Lock()
+        # A model that is quota-exhausted stays exhausted for a while. Retrying
+        # it on every subsequent call burns ~5s each time, so a model that fails
+        # repeatedly is demoted to the back of the chain for the rest of the run.
+        self._strikes: dict[str, int] = {}
         self.calls = 0
 
     # ------------------------------------------------------------------ #
@@ -85,11 +91,23 @@ class GeminiClient:
             system_instruction=system,
             thinking_config=types.ThinkingConfig(thinking_budget=thinking_budget),
         )
+        ck = self._cache.key(
+            {
+                "kind": "structured", "prompt": prompt, "system": system,
+                "schema": str(schema), "temperature": temperature,
+                "thinking": thinking_budget, "chain": self._chain,
+            }
+        )
+        if (cached := self._cache.get(ck)) is not None:
+            return cached
+
         raw = self._call(prompt=prompt, config=cfg, max_attempts=max_attempts_per_model)
         try:
-            return json.loads(raw)
+            parsed = json.loads(raw)
         except json.JSONDecodeError as exc:
             raise GeminiUnavailable(f"Model returned non-JSON: {exc}") from exc
+        self._cache.put(ck, parsed)
+        return parsed
 
     def generate_text(
         self,
@@ -104,25 +122,39 @@ class GeminiClient:
             system_instruction=system,
             thinking_config=types.ThinkingConfig(thinking_budget=thinking_budget),
         )
-        return self._call(prompt=prompt, config=cfg, max_attempts=2)
+        ck = self._cache.key(
+            {
+                "kind": "text", "prompt": prompt, "system": system,
+                "temperature": temperature, "thinking": thinking_budget,
+                "chain": self._chain,
+            }
+        )
+        if (cached := self._cache.get(ck)) is not None:
+            return cached
+        out = self._call(prompt=prompt, config=cfg, max_attempts=2)
+        self._cache.put(ck, out)
+        return out
 
     # ------------------------------------------------------------------ #
     def _call(
         self, *, prompt: str, config, max_attempts: int, deadline: float = 45.0
     ) -> str:
         last: Exception | None = None
-        for model in self._chain:
+        for model in self._order():
             for attempt in range(max_attempts):
                 try:
                     resp = self._with_deadline(model, prompt, config, deadline)
                     with self._lock:
                         self.calls += 1
+                        self._strikes.pop(model, None)
                     if model != self._chain[0]:
                         logger.info("Gemini served by fallback model %s", model)
                     return resp.text or ""
                 except Exception as exc:  # noqa: BLE001
                     last = exc
                     msg = str(exc)
+                    with self._lock:
+                        self._strikes[model] = self._strikes.get(model, 0) + 1
                     # Some models reject thinking_config outright. Strip it and
                     # give this model one more chance before moving on.
                     if "INVALID_ARGUMENT" in msg and config.thinking_config is not None:
@@ -139,6 +171,16 @@ class GeminiClient:
                     )
                     time.sleep(sleep)
         raise GeminiUnavailable(f"All models exhausted. Last error: {last}")
+
+    _STRIKE_LIMIT = 2
+
+    def _order(self) -> list[str]:
+        """Healthy models first, repeatedly-failing ones last."""
+        with self._lock:
+            strikes = dict(self._strikes)
+        healthy = [m for m in self._chain if strikes.get(m, 0) < self._STRIKE_LIMIT]
+        sick = [m for m in self._chain if strikes.get(m, 0) >= self._STRIKE_LIMIT]
+        return healthy + sick
 
     def _with_deadline(self, model: str, prompt: str, config, deadline: float):
         """Run one generate_content under a wall-clock deadline.
