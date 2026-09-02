@@ -29,7 +29,10 @@ from clearcut.agents.report import ReportAgent
 from clearcut.agents.research import ResearchAgent
 from clearcut.agents.substitute import SubstitutionAgent
 from clearcut.agents.triage import TriageAgent
+from clearcut.core.config import get_settings
+from clearcut.core.ledger import ClearanceLedger
 from clearcut.core.models import (
+    Adjudication,
     AgentEvent,
     ClearanceFinding,
     ClearanceReport,
@@ -51,8 +54,14 @@ def run_clearance(
     deep_verify: bool = True,
     substitute: bool = True,
     pdf_path: str | Path | None = None,
+    use_ledger: bool = True,
 ) -> ClearanceReport:
-    """Run a full clearance pass and return the report."""
+    """Run a clearance pass and return the report.
+
+    With `use_ledger`, only items that are new or whose depiction changed since
+    the last draft are re-cleared; everything else carries its prior verdict
+    forward. This is what makes a revision cost minutes instead of a re-buy.
+    """
     emit = emit or (lambda e: None)
     started = time.time()
 
@@ -78,15 +87,69 @@ def run_clearance(
     research_svc = ParallelResearchService()
 
     items = BreakdownAgent(emit=emit).run(script)
-    decisions = TriageAgent(emit=emit).run(items)
+
+    draft_label = script.meta.draft_label or "Untitled draft"
+    ledger = ClearanceLedger(project_id, get_settings().data_dir) if use_ledger else None
+    carried: dict[str, Adjudication] = {}
+
+    if ledger is not None:
+        to_clear, reusable, diff = ledger.plan_revision(items, draft_label)
+        if ledger.history:  # a prior draft exists — this is a revision
+            s = ledger.savings(diff)
+            emit(
+                AgentEvent(
+                    agent="ledger",
+                    phase="diff",
+                    message=(
+                        f"Revision against {diff.from_draft}: "
+                        f"{len(diff.unchanged)} items carry forward, "
+                        f"{len(diff.added)} need re-clearing, "
+                        f"{len(diff.removed)} removed"
+                    ),
+                    payload={
+                        "from_draft": diff.from_draft,
+                        "to_draft": diff.to_draft,
+                        "added": diff.added,
+                        "removed": diff.removed,
+                        "unchanged_count": len(diff.unchanged),
+                        **s,
+                    },
+                )
+            )
+            # Carry prior verdicts forward for everything unchanged.
+            for item_id, entry in reusable.items():
+                carried[item_id] = Adjudication(
+                    item_id=item_id,
+                    verdict=entry.verdict,
+                    risk=entry.risk,
+                    rationale=entry.rationale,
+                    rule_applied="CARRIED_FORWARD",
+                    citations=entry.citations,
+                )
+            items_to_process = to_clear
+        else:
+            items_to_process = items
+    else:
+        items_to_process = items
+
+    decisions = TriageAgent(emit=emit).run(items_to_process)
     evidence = ResearchAgent(
         service=research_svc, emit=emit, deep_verify=deep_verify
     ).run(decisions)
     rulings = AdjudicationAgent(emit=emit).run(decisions, evidence)
+    rulings.update(carried)
 
     subs = {}
     if substitute:
-        subs = SubstitutionAgent(emit=emit, research=research_svc).run(items, rulings)
+        # Only propose fixes for items actually processed this pass — a carried
+        # verdict was already fixed or accepted in an earlier draft.
+        subs = SubstitutionAgent(emit=emit, research=research_svc).run(
+            items_to_process, rulings
+        )
+
+    if ledger is not None:
+        ledger.record(items, rulings, draft_label)
+        ledger.save()
 
     findings = [
         ClearanceFinding(
