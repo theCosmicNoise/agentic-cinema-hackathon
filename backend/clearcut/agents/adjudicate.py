@@ -75,7 +75,9 @@ CATEGORY STANDARDS
   and needs BOTH a synchronisation licence (publisher) and a master use licence (label).
   Say which rights holders. Public domain is clear.
 - artwork: Public domain is clear. Otherwise license_required, naming the rights holder.
-  US works published before 1930 are public domain; later works usually are not.
+  Do not decide public domain by publication date alone. US works published 1929-1963
+  entered the public domain if copyright was never renewed after the initial 28-year
+  term, which is common. Follow the evidence on renewal, not the year.
 - real_person: A living person depicted negatively is must_change (defamation). Neutral
   or historical reference to a public figure is generally clear. For the deceased,
   defamation does not survive but right of publicity does in several US states — say so.
