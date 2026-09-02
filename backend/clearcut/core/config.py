@@ -25,11 +25,14 @@ class Settings(BaseModel):
     # walks a fallback chain rather than trusting one model id.
     gemini_model: str = "gemini-3.5-flash"
     gemini_fast_model: str = "gemini-3.5-flash-lite"
+    # Curated by probing this key directly. Excluded: gemini-2.5-flash (404,
+    # closed to new keys) and the *-lite / 3.6 variants (400 — they reject
+    # thinking_config). Order is best-quality first.
     gemini_fallbacks: list[str] = [
         "gemini-3.5-flash",
         "gemini-3-flash-preview",
-        "gemini-2.5-flash",
-        "gemini-3.5-flash-lite",
+        "gemini-3.8-flash",
+        "gemini-flash-latest",
     ]
     data_dir: Path = REPO_ROOT / "data"
     log_level: str = "INFO"

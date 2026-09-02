@@ -123,6 +123,12 @@ class GeminiClient:
                 except Exception as exc:  # noqa: BLE001
                     last = exc
                     msg = str(exc)
+                    # Some models reject thinking_config outright. Strip it and
+                    # give this model one more chance before moving on.
+                    if "INVALID_ARGUMENT" in msg and config.thinking_config is not None:
+                        logger.info("%s rejected thinking_config; retrying without", model)
+                        config = config.model_copy(update={"thinking_config": None})
+                        continue
                     if not any(code in msg for code in _RETRYABLE):
                         logger.warning("Gemini %s non-retryable: %s", model, msg[:160])
                         break  # bad request — next model won't help either
