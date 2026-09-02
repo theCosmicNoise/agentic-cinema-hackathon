@@ -1,0 +1,28 @@
+# Secrets — never commit
+.env
+.env.local
+*.key
+service-account*.json
+gcp-credentials*.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+.next/
+out/
+dist/
+
+# Runtime data
+data/
+*.db
+*.sqlite3
+runs/
+.DS_Store
