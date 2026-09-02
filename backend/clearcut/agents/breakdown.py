@@ -19,6 +19,7 @@ from typing import Callable
 
 from pydantic import BaseModel, Field
 
+from clearcut.core.coalesce import coalesce
 from clearcut.core.models import (
     AgentEvent,
     ClearableItem,
@@ -101,7 +102,20 @@ class BreakdownAgent:
             for scene, found in pool.map(self._scene_pair, script.scenes):
                 results.append((scene, found))
 
-        items = self._merge(results)
+        raw_items = self._merge(results)
+        items, notes = coalesce(raw_items)
+
+        folded = len(raw_items) - len(items)
+        if folded:
+            self._emit(
+                AgentEvent(
+                    agent=self.name,
+                    phase="coalesce",
+                    message=f"Coalesced {folded} duplicate/fragment items",
+                    payload={"folded": folded, "notes": notes},
+                )
+            )
+
         self._emit(
             AgentEvent(
                 agent=self.name,
