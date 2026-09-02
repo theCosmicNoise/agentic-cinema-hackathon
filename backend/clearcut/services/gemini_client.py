@@ -18,6 +18,10 @@ Two things this hides from the agents:
    path — observed requests stall indefinitely after the endpoint returns a
    503. Every attempt therefore runs under a wall-clock deadline enforced
    here, so a hung model fails over instead of freezing the run.
+5. Daily quota. The free tier allows 20 generate_content requests per day per
+   model. A retry against a model that has hit a PER-DAY quota cannot succeed
+   and still consumes budget, so daily-quota 429s skip retry entirely and
+   demote the model immediately.
 """
 
 from __future__ import annotations
@@ -153,6 +157,15 @@ class GeminiClient:
                 except Exception as exc:  # noqa: BLE001
                     last = exc
                     msg = str(exc)
+                    # A per-day quota will not clear on a retry, and each
+                    # attempt still costs budget. Burn the model, not the quota.
+                    if "PerDay" in msg or "RequestsPerDay" in msg:
+                        with self._lock:
+                            self._strikes[model] = self._STRIKE_LIMIT
+                        logger.info(
+                            "Gemini %s daily quota exhausted; demoting for this run", model
+                        )
+                        break
                     with self._lock:
                         self._strikes[model] = self._strikes.get(model, 0) + 1
                     # Some models reject thinking_config outright. Strip it and
