@@ -20,8 +20,17 @@ class Settings(BaseModel):
     google_cloud_project: str = ""
     google_cloud_location: str = "us-central1"
     use_vertex: bool = False
-    gemini_model: str = "gemini-3-pro-preview"
-    gemini_fast_model: str = "gemini-3-flash-preview"
+    # Verified reachable on this key. Pro tiers are quota-gated on the free
+    # tier (429), and several flash aliases intermittently 503 — so every call
+    # walks a fallback chain rather than trusting one model id.
+    gemini_model: str = "gemini-3.5-flash"
+    gemini_fast_model: str = "gemini-3.5-flash-lite"
+    gemini_fallbacks: list[str] = [
+        "gemini-3.5-flash",
+        "gemini-3-flash-preview",
+        "gemini-2.5-flash",
+        "gemini-3.5-flash-lite",
+    ]
     data_dir: Path = REPO_ROOT / "data"
     log_level: str = "INFO"
 
