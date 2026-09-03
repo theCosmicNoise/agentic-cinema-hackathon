@@ -163,6 +163,30 @@ content-addressed on disk, so a repeat run is free and reproducible.
 
 ---
 
+## Deploying to Cloud Run
+
+Builds remotely with Cloud Build, so no local Docker daemon is required. API
+keys are stored in Secret Manager and mounted into the service at runtime
+rather than baked into the image or passed as plain environment variables.
+
+```bash
+./deploy.sh YOUR_PROJECT_ID us-central1
+```
+
+The script enables the required APIs, writes both keys as secrets, grants the
+runtime service account access, deploys, and prints the public URL.
+
+Requires billing enabled on the GCP project.
+
+**A note on persistence.** Cloud Run's filesystem is read-only apart from
+`/tmp`, so `CLEARCUT_DATA_DIR` points there. The clearance ledger and the model
+and research caches therefore live for the life of an instance and do not
+survive a cold start or spread across instances. That is fine for a demo; a
+production deployment should back the ledger with Firestore or Cloud Storage,
+which is a change confined to `core/ledger.py` and `services/cache.py`.
+
+---
+
 ## Runtime integrations
 
 **Parallel Web Systems** — `backend/clearcut/services/parallel_research.py`

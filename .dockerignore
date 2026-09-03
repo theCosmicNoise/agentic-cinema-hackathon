@@ -1,0 +1,13 @@
+.git
+.venv
+data
+__pycache__
+**/__pycache__
+*.pyc
+.pytest_cache
+.env
+.env.local
+node_modules
+docs
+*.md
+!README.md
