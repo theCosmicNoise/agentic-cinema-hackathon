@@ -56,14 +56,23 @@ class ParsedScreenplay:
         return self.meta.page_count
 
 
+# Inserted between PDF pages so real pagination survives text extraction.
+PAGE_BREAK = "\x0c"
+
+
 def load_screenplay(path: str | Path) -> str:
-    """Read a screenplay from .txt/.fountain or a Final Draft-style PDF."""
+    """Read a screenplay from .txt/.fountain or a Final Draft-style PDF.
+
+    For PDFs the real page boundaries are preserved as form feeds. A clearance
+    report is page-cited and a producer turns to that page, so an estimated
+    page number is not good enough when the true one is available.
+    """
     p = Path(path)
     if p.suffix.lower() == ".pdf":
         from pypdf import PdfReader
 
         reader = PdfReader(str(p))
-        return "\n".join((pg.extract_text() or "") for pg in reader.pages)
+        return PAGE_BREAK.join((pg.extract_text() or "") for pg in reader.pages)
     return p.read_text(encoding="utf-8", errors="replace")
 
 
@@ -71,7 +80,15 @@ def parse_screenplay(text: str, *, title: str | None = None) -> ParsedScreenplay
     """Split into scenes and assign page numbers to each."""
     lines = text.splitlines()
     meta = _extract_meta(lines, title=title)
-    meta.page_count = max(1, (len(lines) + LINES_PER_PAGE - 1) // LINES_PER_PAGE)
+
+    # Prefer true pagination when the source carried it (PDF form feeds);
+    # fall back to the 55-line convention for plain text and Fountain.
+    page_of_line = _true_pages(lines)
+    if page_of_line:
+        meta.page_count = max(page_of_line.values())
+        lines = [ln.replace(PAGE_BREAK, "") for ln in lines]
+    else:
+        meta.page_count = max(1, (len(lines) + LINES_PER_PAGE - 1) // LINES_PER_PAGE)
 
     # Locate every slug line — these are the scene boundaries.
     boundaries: list[tuple[int, str | None, str]] = []
@@ -87,6 +104,9 @@ def parse_screenplay(text: str, *, title: str | None = None) -> ParsedScreenplay
         if slug:
             boundaries.append((i, None, slug.group(1).strip()))
 
+    def page_at(i: int) -> int:
+        return page_of_line.get(i, _page_of(i)) if page_of_line else _page_of(i)
+
     scenes: list[Scene] = []
     if not boundaries:
         # No slug lines (treatment, sides, partial pages) — treat as one unit.
@@ -101,8 +121,8 @@ def parse_screenplay(text: str, *, title: str | None = None) -> ParsedScreenplay
                     index=n + 1,
                     scene_number=num,
                     heading=heading,
-                    start_page=_page_of(start),
-                    end_page=_page_of(max(start, end - 1)),
+                    start_page=page_at(start),
+                    end_page=page_at(max(start, end - 1)),
                     text="\n".join(lines[start:end]),
                 )
             )
@@ -112,6 +132,18 @@ def parse_screenplay(text: str, *, title: str | None = None) -> ParsedScreenplay
 
 def _page_of(line_index: int) -> int:
     return line_index // LINES_PER_PAGE + 1
+
+
+def _true_pages(lines: list[str]) -> dict[int, int]:
+    """Map line index -> real page number, when the source carried page breaks."""
+    if not any(PAGE_BREAK in ln for ln in lines):
+        return {}
+    mapping: dict[int, int] = {}
+    page = 1
+    for i, ln in enumerate(lines):
+        mapping[i] = page
+        page += ln.count(PAGE_BREAK)
+    return mapping
 
 
 def _extract_meta(lines: list[str], *, title: str | None) -> ScriptMeta:

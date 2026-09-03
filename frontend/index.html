@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CLEARCUT — automated script clearance</title>
+<title>CLEARCUT — script clearance for film &amp; television</title>
 <link rel="stylesheet" href="/style.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🎬</text></svg>">
 </head>
@@ -11,7 +11,8 @@
 
 <header class="topbar">
   <div class="wordmark">CLEAR<span>CUT</span></div>
-  <div class="tagline">Script clearance &amp; rights-risk agent network</div>
+  <div class="tagline">Script clearance for film &amp; television</div>
+  <div class="crumb" id="crumb"></div>
   <div class="health">
     <div class="dot" id="d-gem"><i></i> Gemini</div>
     <div class="dot" id="d-par"><i></i> Parallel</div>
@@ -19,33 +20,15 @@
 </header>
 
 <div class="layout">
-  <aside class="rail">
-    <section id="setup">
-      <div class="label">Draft</div>
-      <div id="drafts"></div>
-      <button class="run" id="start">Open clearance session</button>
-    </section>
-
-    <section id="pipeline" hidden>
-      <div class="label">Pipeline</div>
-      <div id="stages"></div>
-    </section>
-
-    <section id="sessmeta" hidden>
-      <div class="label">Session</div>
-      <div id="meta"></div>
-      <button class="ghost" id="newsess">Start over</button>
-    </section>
+  <aside class="rail" id="rail" hidden>
+    <div class="label">Clearance pipeline</div>
+    <div id="steps"></div>
+    <div class="label" style="margin-top:24px">This script</div>
+    <div id="meta"></div>
+    <button class="btn ghost wide" id="newsess" style="margin-top:14px">Clear a different script</button>
   </aside>
 
-  <main class="main">
-    <div class="view" id="stageview">
-      <div class="placeholder">
-        <div class="big">Open a clearance session</div>
-        <div>Six agents run in sequence. You review and approve each one before the next begins.</div>
-      </div>
-    </div>
-  </main>
+  <main class="main" id="main"></main>
 </div>
 
 <script src="/app.js"></script>

@@ -19,7 +19,7 @@ import queue
 import threading
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -28,6 +28,7 @@ from pydantic import BaseModel
 from clearcut.core.config import get_settings
 from clearcut.core.ledger import ClearanceLedger
 import re
+import uuid
 
 from clearcut.core.models import AgentEvent, Verdict
 from clearcut.core.screenplay import load_screenplay, parse_screenplay
@@ -56,6 +57,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def no_store_frontend(request, call_next):
+    """Never let a browser serve a stale UI.
+
+    The frontend is a handful of small files and the cost of re-fetching them
+    is nil, whereas a cached stylesheet silently showing an old build during a
+    live demo is expensive.
+    """
+    response = await call_next(request)
+    path = request.url.path
+    if path == "/" or path.endswith((".css", ".js", ".html")):
+        response.headers["Cache-Control"] = "no-store, must-revalidate"
+    return response
 
 
 _store: SessionStore | None = None
@@ -115,9 +131,87 @@ def screenplays() -> list[dict]:
                 "draft": meta.draft_label,
                 "date": meta.draft_date,
                 "pages": meta.page_count,
+                "sample": True,
+            }
+        )
+    for m in sorted(upload_dir().glob("*.meta.json")):
+        try:
+            d = json.loads(m.read_text())
+        except Exception:  # noqa: BLE001, S112
+            continue
+        out.append(
+            {
+                "id": d["id"],
+                "title": d.get("title") or d.get("original_name"),
+                "author": d.get("author"),
+                "draft": d.get("draft_label"),
+                "date": d.get("draft_date"),
+                "pages": d.get("page_count", 0),
+                "original_name": d.get("original_name"),
+                "sample": False,
             }
         )
     return out
+
+
+UPLOAD_DIR = None  # resolved lazily under the data dir
+
+
+def upload_dir() -> Path:
+    d = Path(get_settings().data_dir) / "uploads"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _screenplay_path(sid: str) -> Path | None:
+    """A screenplay id resolves either to a bundled sample or an upload."""
+    for base, suffixes in ((SCREENPLAY_DIR, (".txt",)), (upload_dir(), (".txt", ".pdf", ".fountain"))):
+        for suf in suffixes:
+            p = base / f"{sid}{suf}"
+            if p.exists():
+                return p
+    return None
+
+
+@app.post("/api/upload")
+async def upload(file: UploadFile = File(...)) -> dict:
+    """Accept a real screenplay — Final Draft PDF export, Fountain, or plain text."""
+    name = Path(file.filename or "script").name
+    suffix = Path(name).suffix.lower()
+    if suffix not in {".pdf", ".txt", ".fountain"}:
+        raise HTTPException(400, "Upload a PDF, .fountain or .txt screenplay.")
+
+    raw = await file.read()
+    if len(raw) > 25 * 1024 * 1024:
+        raise HTTPException(413, "Screenplay exceeds the 25 MB limit.")
+
+    sid = f"up_{uuid.uuid4().hex[:8]}"
+    dest = upload_dir() / f"{sid}{suffix}"
+    dest.write_bytes(raw)
+
+    try:
+        meta = parse_screenplay(load_screenplay(dest)).meta
+    except Exception as exc:  # noqa: BLE001
+        dest.unlink(missing_ok=True)
+        raise HTTPException(422, f"Could not read that screenplay: {exc}") from exc
+
+    if meta.page_count < 1:
+        dest.unlink(missing_ok=True)
+        raise HTTPException(422, "That file contains no readable screenplay text.")
+
+    (upload_dir() / f"{sid}.meta.json").write_text(
+        json.dumps({"id": sid, "original_name": name, **json.loads(meta.model_dump_json())})
+    )
+    return {
+        "id": sid,
+        "original_name": name,
+        "title": meta.title,
+        "author": meta.author,
+        "draft": meta.draft_label,
+        "date": meta.draft_date,
+        "pages": meta.page_count,
+        "uploaded": True,
+    }
 
 
 @app.get("/api/ledger/{project_id}")
@@ -153,8 +247,8 @@ def stages() -> list[dict]:
 
 @app.post("/api/sessions")
 def new_session(req: NewSession) -> dict:
-    path = SCREENPLAY_DIR / f"{req.screenplay}.txt"
-    if not path.exists():
+    path = _screenplay_path(req.screenplay)
+    if path is None:
         raise HTTPException(404, f"No screenplay '{req.screenplay}'")
     project = req.project_id or re.sub(r"_v\d+$", "", req.screenplay)
     s = create_session(path, project)
@@ -190,7 +284,9 @@ async def advance(sid: str, stage_id: str, deep: bool = False) -> StreamingRespo
             409, f"stage '{stage_id}' is not unlocked — approve the previous stage first"
         )
 
-    path = SCREENPLAY_DIR / f"{s.screenplay_id}.txt"
+    path = _screenplay_path(s.screenplay_id)
+    if path is None:
+        raise HTTPException(410, "The screenplay for this session is no longer available.")
     events: queue.Queue = queue.Queue()
     SENTINEL = object()
 

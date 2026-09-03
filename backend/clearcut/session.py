@@ -295,8 +295,10 @@ def _run_breakdown(session: Session, path: Path, emit: EmitFn) -> None:
         session.carried = list(reusable.keys())
 
     session.items = items
+    pages = script.total_pages
     session.stage(Stage.BREAKDOWN).summary = (
-        f"{len(items)} clearable items across {script.total_pages} pages"
+        f"{len(items)} clearable item{'' if len(items) == 1 else 's'} across "
+        f"{pages} page{'' if pages == 1 else 's'}"
         + (f" · {len(session.carried)} carried from ledger" if session.carried else "")
     )
 
