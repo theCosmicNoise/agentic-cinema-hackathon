@@ -163,3 +163,23 @@ def test_phone_substitution_settles_by_rule_without_research(monkeypatch):
     assert s.proposed == "555-0147"
     assert search.calls == 0, "rule-settled candidate should not hit Parallel"
     assert adj.calls == 0, "rule-settled candidate should not hit Gemini"
+
+
+def test_phone_replacement_is_generated_without_a_model(monkeypatch):
+    """A 555-block number is a lookup table, not a generation problem.
+
+    This must hold when the model is unavailable, so no _propose stub is
+    installed here — the agent has to produce the candidate on its own.
+    """
+    search = _FakeSearch()
+    adj = _FakeAdjudicator({})
+    agent = SubstitutionAgent(research=search, adjudicator=adj)
+
+    subs = agent.run(
+        [_item("312-664-9920", ClearanceCategory.PHONE_NUMBER)],
+        {"itm_test": _ruling()},
+    )
+    s = subs["itm_test"]
+    assert s.verified_clear is True
+    assert s.proposed.startswith("312-555-01"), s.proposed
+    assert search.calls == 0 and adj.calls == 0

@@ -18,6 +18,7 @@ common case costs one generation plus one verification.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Callable
 
 from pydantic import BaseModel, Field
@@ -133,6 +134,26 @@ class SubstitutionAgent:
         candidates = self._propose(item, ruling)
         rejected: list[str] = []
 
+        if not candidates:
+            # No candidate was generated at all — a different failure from
+            # "every candidate was rejected", and the report must not conflate
+            # them. attempts=0 marks it as never having been tested.
+            self._emit(
+                AgentEvent(
+                    agent=self.name,
+                    phase="unavailable",
+                    message=f"{item.value} — could not generate replacement candidates",
+                    payload={"item_id": item.id, "value": item.value},
+                )
+            )
+            return Substitution(
+                item_id=item.id,
+                original=item.value,
+                proposed="",
+                verified_clear=False,
+                attempts=0,
+            )
+
         for attempt, cand in enumerate(candidates[: self._max], start=1):
             self._emit(
                 AgentEvent(
@@ -207,7 +228,35 @@ class SubstitutionAgent:
             rejected_candidates=rejected,
         )
 
+    def _deterministic(self, item: ClearableItem) -> list[_Candidate]:
+        """Replacements that are knowable without asking a model.
+
+        A phone number is the clearest case: the 555-0100..555-0199 block exists
+        precisely so productions have safe numbers, so proposing one is a lookup
+        table, not a generation problem. Doing it here means the fix still works
+        when the model is unavailable — and it is provably clear, which a
+        generated candidate never is until it has been re-cleared.
+        """
+        if item.category is not ClearanceCategory.PHONE_NUMBER:
+            return []
+
+        digits = re.sub(r"\D", "", item.value)
+        area = digits[:3] if len(digits) >= 10 else ""
+        # Keep the area code so dialogue rhythm and regional flavour survive.
+        seed = int(digits[-2:] or "0") % 100
+        return [
+            _Candidate(
+                value=(f"{area}-555-01{n:02d}" if area else f"555-01{n:02d}"),
+                reason="NANPA reserved fictional block; area code preserved",
+            )
+            for n in {seed, (seed + 7) % 100, (seed + 23) % 100}
+        ]
+
     def _propose(self, item: ClearableItem, ruling: Adjudication) -> list[_Candidate]:
+        fixed = self._deterministic(item)
+        if fixed:
+            return fixed
+
         quote = item.locations[0].quote if item.locations else ""
         prompt = (
             f"ORIGINAL: {item.value}\n"

@@ -20,45 +20,31 @@
 
 <div class="layout">
   <aside class="rail">
-    <section>
+    <section id="setup">
       <div class="label">Draft</div>
       <div id="drafts"></div>
+      <button class="run" id="start">Open clearance session</button>
     </section>
 
-    <section>
-      <div class="label">Options</div>
-      <label class="opt"><input type="checkbox" id="o-ledger" checked> Use clearance ledger</label>
-      <label class="opt"><input type="checkbox" id="o-sub" checked> Propose verified fixes</label>
-      <label class="opt"><input type="checkbox" id="o-deep"> Deep verification (slower)</label>
+    <section id="pipeline" hidden>
+      <div class="label">Pipeline</div>
+      <div id="stages"></div>
     </section>
 
-    <section>
-      <button class="run" id="go">Run clearance</button>
-    </section>
-
-    <section>
-      <div class="label">Ledger — <span id="proj">demo</span></div>
-      <div id="ledger-stats"></div>
+    <section id="sessmeta" hidden>
+      <div class="label">Session</div>
+      <div id="meta"></div>
+      <button class="ghost" id="newsess">Start over</button>
     </section>
   </aside>
 
   <main class="main">
-    <nav class="tabs">
-      <button class="tab on" data-v="trace">Agent trace<span class="n" id="n-ev">0</span></button>
-      <button class="tab" data-v="report">Report<span class="n" id="n-find">—</span></button>
-      <button class="tab" data-v="ledger">Ledger<span class="n" id="n-led">—</span></button>
-    </nav>
-
-    <div class="view" id="v-trace">
-      <div class="placeholder" id="ph">
-        <div class="big">Select a draft and run clearance</div>
-        <div>Six agents will break down, research, adjudicate and re-clear the screenplay.</div>
+    <div class="view" id="stageview">
+      <div class="placeholder">
+        <div class="big">Open a clearance session</div>
+        <div>Six agents run in sequence. You review and approve each one before the next begins.</div>
       </div>
-      <div class="trace" id="trace" hidden></div>
     </div>
-
-    <div class="view" id="v-report" hidden></div>
-    <div class="view" id="v-ledger" hidden></div>
   </main>
 </div>
 

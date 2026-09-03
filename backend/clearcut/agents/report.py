@@ -304,6 +304,14 @@ class ReportAgent:
                     s["body"],
                 )
             )
+        elif sub and sub.attempts == 0:
+            block.append(
+                Paragraph(
+                    "No replacement was proposed for this item — it still requires "
+                    "a revision decided by the production.",
+                    s["body"],
+                )
+            )
 
         # Keep an item and its sources on one page where possible.
         return KeepTogether(block)
