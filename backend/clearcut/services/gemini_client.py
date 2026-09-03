@@ -67,7 +67,7 @@ class GeminiClient:
             )
         else:
             self._client = genai.Client(api_key=s.require_google(), http_options=http)
-        self._chain = list(s.gemini_fallbacks)
+        self._chain = list(s.model_chain)
         self._cache = DiskCache(s.data_dir, "gemini")
         self._lock = threading.Lock()
         # A model that is quota-exhausted stays exhausted for a while. Retrying

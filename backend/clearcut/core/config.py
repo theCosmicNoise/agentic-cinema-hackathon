@@ -23,17 +23,28 @@ class Settings(BaseModel):
     # Verified reachable on this key. Pro tiers are quota-gated on the free
     # tier (429), and several flash aliases intermittently 503 — so every call
     # walks a fallback chain rather than trusting one model id.
-    gemini_model: str = "gemini-3.5-flash"
-    gemini_fast_model: str = "gemini-3.5-flash-lite"
+    gemini_model: str = "gemini-2.5-flash"
+    gemini_fast_model: str = "gemini-2.5-flash-lite"
     # Curated by probing this key directly. Excluded: gemini-2.5-flash (404,
     # closed to new keys) and the *-lite / 3.6 variants (400 — they reject
     # thinking_config). Order is best-quality first.
+    # Vertex and AI Studio expose different model catalogues, so the chain is
+    # selected per backend. Vertex entries verified by probing this project in
+    # us-central1; the 3.x ids that AI Studio serves are 404 there.
     gemini_fallbacks: list[str] = [
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
+    ]
+    gemini_fallbacks_aistudio: list[str] = [
         "gemini-3.5-flash",
         "gemini-3-flash-preview",
         "gemini-3.8-flash",
         "gemini-flash-latest",
     ]
+
+    @property
+    def model_chain(self) -> list[str]:
+        return self.gemini_fallbacks if self.use_vertex else self.gemini_fallbacks_aistudio
     data_dir: Path = REPO_ROOT / "data"
     log_level: str = "INFO"
 
