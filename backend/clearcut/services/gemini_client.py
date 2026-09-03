@@ -217,6 +217,16 @@ class GeminiClient:
             pool.shutdown(wait=False, cancel_futures=True)
 
 
+    @property
+    def total_calls(self) -> int:
+        """Model calls actually made — cache hits are not counted."""
+        return self.calls
+
+    @property
+    def cache_stats(self) -> dict[str, int]:
+        return self._cache.stats
+
+
 _client: GeminiClient | None = None
 
 

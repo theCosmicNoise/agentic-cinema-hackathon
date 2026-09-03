@@ -26,3 +26,7 @@ data/
 *.sqlite3
 runs/
 .DS_Store
+
+# Ledger + reports are runtime state, not source
+data/ledger/
+data/reports/

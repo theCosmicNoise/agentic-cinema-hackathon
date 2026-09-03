@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLEARCUT — automated script clearance</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🎬</text></svg>">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wordmark">CLEAR<span>CUT</span></div>
+  <div class="tagline">Script clearance &amp; rights-risk agent network</div>
+  <div class="health">
+    <div class="dot" id="d-gem"><i></i> Gemini</div>
+    <div class="dot" id="d-par"><i></i> Parallel</div>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="rail">
+    <section>
+      <div class="label">Draft</div>
+      <div id="drafts"></div>
+    </section>
+
+    <section>
+      <div class="label">Options</div>
+      <label class="opt"><input type="checkbox" id="o-ledger" checked> Use clearance ledger</label>
+      <label class="opt"><input type="checkbox" id="o-sub" checked> Propose verified fixes</label>
+      <label class="opt"><input type="checkbox" id="o-deep"> Deep verification (slower)</label>
+    </section>
+
+    <section>
+      <button class="run" id="go">Run clearance</button>
+    </section>
+
+    <section>
+      <div class="label">Ledger — <span id="proj">demo</span></div>
+      <div id="ledger-stats"></div>
+    </section>
+  </aside>
+
+  <main class="main">
+    <nav class="tabs">
+      <button class="tab on" data-v="trace">Agent trace<span class="n" id="n-ev">0</span></button>
+      <button class="tab" data-v="report">Report<span class="n" id="n-find">—</span></button>
+      <button class="tab" data-v="ledger">Ledger<span class="n" id="n-led">—</span></button>
+    </nav>
+
+    <div class="view" id="v-trace">
+      <div class="placeholder" id="ph">
+        <div class="big">Select a draft and run clearance</div>
+        <div>Six agents will break down, research, adjudicate and re-clear the screenplay.</div>
+      </div>
+      <div class="trace" id="trace" hidden></div>
+    </div>
+
+    <div class="view" id="v-report" hidden></div>
+    <div class="view" id="v-ledger" hidden></div>
+  </main>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
