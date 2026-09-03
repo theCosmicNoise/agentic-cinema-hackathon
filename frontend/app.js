@@ -127,16 +127,49 @@ function renderStart() {
 }
 
 function draftCard(d) {
-  const b = el('button', 'draft' + (d.id === S.draft ? ' sel' : ''));
+  // A row rather than a button, so the remove control can sit inside it
+  // without nesting one interactive element in another.
+  const row = el('div', 'draft' + (d.id === S.draft ? ' sel' : ''));
+  row.setAttribute('role', 'button');
+  row.tabIndex = 0;
+
   const sw = el('span', 'swatch'); sw.style.background = DRAFT_HUE[d.draft] || '#C9C5B8';
   const body = el('div');
   body.append(el('div', 't', d.title || d.original_name || d.id));
   const bits = [d.draft && `${d.draft} draft`, d.date, `${d.pages} page${d.pages === 1 ? '' : 's'}`, d.original_name].filter(Boolean);
   body.append(el('div', 'm', bits.join(' · ')));
-  b.append(sw, body);
-  b.append(el('span', 'chip', d.sample ? 'Sample' : 'Uploaded'));
-  b.onclick = () => { S.draft = d.id; renderStart(); };
-  return b;
+  row.append(sw, body);
+  row.append(el('span', 'chip', d.sample ? 'Sample' : 'Uploaded'));
+
+  const pick = () => { S.draft = d.id; renderStart(); };
+  row.onclick = pick;
+  row.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } };
+
+  // Samples are read-only fixtures; only uploads can be removed.
+  if (!d.sample) {
+    const x = el('button', 'remove', '\u00d7');
+    x.title = `Remove ${d.title || d.id}`;
+    x.setAttribute('aria-label', `Remove ${d.title || d.id}`);
+    x.onclick = (e) => { e.stopPropagation(); confirmRemove(d); };
+    row.append(x);
+  }
+  return row;
+}
+
+async function confirmRemove(d) {
+  const name = d.title || d.original_name || d.id;
+  if (!window.confirm(
+    `Remove "${name}"?\n\nThe screenplay file and any unfinished review sessions ` +
+    `for it are deleted. Clearance rulings already committed to your ledger are kept.`
+  )) return;
+  try {
+    const r = await fetch(`/api/screenplays/${d.id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || 'Could not remove');
+    if (S.draft === d.id) S.draft = null;
+    await loadDrafts();
+    S.error = null;
+  } catch (e) { S.error = e.message; }
+  renderStart();
 }
 
 async function doUpload(file) {

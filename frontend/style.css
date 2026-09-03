@@ -423,3 +423,16 @@ select.override {
   .explain { grid-template-columns: 1fr; }
   .detail { padding: 20px 18px 80px; }
 }
+
+/* remove control on uploaded scripts */
+.draft { position: relative; }
+.draft .remove {
+  background: transparent; border: 1px solid transparent;
+  color: var(--faint); border-radius: 6px;
+  width: 26px; height: 26px; line-height: 1;
+  font-size: 17px; cursor: pointer; flex: 0 0 auto;
+  margin-left: 6px; opacity: 0; transition: opacity .12s, color .12s, border-color .12s;
+}
+.draft:hover .remove, .draft:focus-within .remove { opacity: 1; }
+.draft .remove:hover { color: var(--must); border-color: #F0CFCC; background: var(--must-bg); }
+.draft .remove:focus-visible { opacity: 1; outline: 2px solid var(--must); outline-offset: 1px; }

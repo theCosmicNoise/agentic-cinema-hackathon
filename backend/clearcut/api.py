@@ -214,6 +214,45 @@ async def upload(file: UploadFile = File(...)) -> dict:
     }
 
 
+@app.delete("/api/screenplays/{screenplay_id}")
+def delete_screenplay(screenplay_id: str) -> dict:
+    """Remove an uploaded screenplay and its metadata.
+
+    Only uploads are removable. The bundled samples are read-only fixtures, and
+    the clearance ledger is deliberately left intact — it is the production's
+    record of what was cleared, and it outlives any single file.
+    """
+    if not screenplay_id.startswith("up_"):
+        raise HTTPException(
+            403, "Only uploaded screenplays can be removed; samples are read-only."
+        )
+    if "/" in screenplay_id or "\\" in screenplay_id or ".." in screenplay_id:
+        raise HTTPException(400, "Invalid screenplay id.")
+
+    removed = []
+    for f in list(upload_dir().glob(f"{screenplay_id}.*")):
+        if f.is_file():
+            f.unlink()
+            removed.append(f.name)
+    if not removed:
+        raise HTTPException(404, f"No uploaded screenplay '{screenplay_id}'")
+
+    # Sessions referencing it are orphaned; drop them so the UI cannot offer a
+    # run that could never start.
+    dropped = 0
+    sess_dir = Path(get_settings().data_dir) / "sessions"
+    if sess_dir.exists():
+        for sf in sess_dir.glob("*.json"):
+            try:
+                if f'"screenplay_id": "{screenplay_id}"' in sf.read_text():
+                    sf.unlink()
+                    dropped += 1
+            except OSError:
+                continue
+
+    return {"removed": removed, "sessions_dropped": dropped}
+
+
 @app.get("/api/ledger/{project_id}")
 def ledger(project_id: str) -> dict:
     led = ClearanceLedger(project_id, get_settings().data_dir)
