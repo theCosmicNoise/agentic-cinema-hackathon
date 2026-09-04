@@ -307,6 +307,15 @@ def list_sessions() -> list[dict]:
     return store().list()
 
 
+@app.delete("/api/sessions/{sid}")
+def drop_session(sid: str) -> dict:
+    """Discard a run. The clearance ledger is untouched — it is the production's
+    record of what was cleared and outlives any single review."""
+    if not store().delete(sid):
+        raise HTTPException(404, "no such session")
+    return {"deleted": sid}
+
+
 @app.get("/api/sessions/{sid}")
 def get_session(sid: str) -> dict:
     s = store().get(sid)

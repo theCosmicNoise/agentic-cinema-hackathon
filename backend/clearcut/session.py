@@ -196,21 +196,63 @@ class SessionStore:
             tmp.rename(self._path(s.id))
 
     def list(self) -> list[dict[str, Any]]:
+        """Every past run, newest first, with enough detail to choose one.
+
+        A production comes back to this list to answer "what did we decide about
+        the blue pages", so it carries where the run stopped, what it concluded,
+        and how much of it was the reviewer's own judgement rather than the
+        machine's.
+        """
         out = []
         for p in sorted(self.dir.glob("*.json"), key=lambda x: x.stat().st_mtime, reverse=True):
             s = self.get(p.stem)
-            if s:
-                out.append(
-                    {
-                        "id": s.id,
-                        "project_id": s.project_id,
-                        "title": s.script.title,
-                        "draft": s.script.draft_label,
-                        "created_at": s.created_at,
-                        "items": len(s.items),
-                    }
-                )
+            if not s:
+                continue
+
+            done = [st for st in STAGE_ORDER if s.stages.get(st.value, StageState()).status == "approved"]
+            current = next(
+                (st for st in STAGE_ORDER if s.stages.get(st.value, StageState()).status != "approved"),
+                None,
+            )
+            live = s.active_items()
+            blocking = sum(
+                1
+                for i in live
+                if s.effective_verdict(i.id)
+                in {Verdict.MUST_CHANGE, Verdict.LICENSE_REQUIRED, Verdict.LEGAL_REVIEW}
+            )
+            decisions = s.decisions.values()
+            out.append(
+                {
+                    "id": s.id,
+                    "project_id": s.project_id,
+                    "screenplay_id": s.screenplay_id,
+                    "title": s.script.title,
+                    "draft": s.script.draft_label,
+                    "pages": s.script.page_count,
+                    "created_at": s.created_at,
+                    "updated_at": datetime.fromtimestamp(
+                        p.stat().st_mtime, tz=timezone.utc
+                    ),
+                    "items": len(s.items),
+                    "stages_done": len(done),
+                    "stages_total": len(STAGE_ORDER),
+                    "current_stage": current.value if current else None,
+                    "complete": current is None,
+                    "blocking": blocking,
+                    "dismissed": sum(1 for d in decisions if d.dismissed),
+                    "overrides": sum(1 for d in decisions if d.verdict_override),
+                    "report_id": s.report_id,
+                }
+            )
         return out
+
+    def delete(self, sid: str) -> bool:
+        p = self._path(sid)
+        if not p.exists():
+            return False
+        p.unlink()
+        return True
 
 
 # --------------------------------------------------------------------------- #

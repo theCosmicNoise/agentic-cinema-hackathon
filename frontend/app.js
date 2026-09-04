@@ -49,7 +49,7 @@ const GUIDE = {
   },
 };
 
-const S = { deep: false, buckets: [], open: {}, drafts: [], draft: null, stages: [], sess: null, view: null, running: false, runningStage: null, trace: [], error: null, uploading: false };
+const S = { deep: false, buckets: [], open: {}, history: [], drafts: [], draft: null, stages: [], sess: null, view: null, running: false, runningStage: null, trace: [], error: null, uploading: false };
 
 /* ---------------- boot ---------------- */
 async function boot() {
@@ -60,8 +60,13 @@ async function boot() {
   } catch {}
   S.stages = await api('/api/stages');
   S.buckets = await api('/api/buckets');
+  await loadHistory();
   await loadDrafts();
   renderStart();
+}
+
+async function loadHistory() {
+  try { S.history = await api('/api/sessions'); } catch { S.history = []; }
 }
 
 async function loadDrafts() {
@@ -124,6 +129,8 @@ function renderStart() {
   pick.append(go);
   w.append(pick);
 
+  if (S.history.length) w.append(historyPanel());
+
   m.append(w);
 }
 
@@ -185,6 +192,87 @@ async function doUpload(file) {
   } catch (e) { S.error = e.message; }
   S.uploading = false;
   renderStart();
+}
+
+
+/* ---------------- history ----------------
+   A production comes back to answer "what did we decide about the blue pages".
+   So a past run is reopenable at the step it stopped on, with every decision
+   the reviewer made still attached and still editable. */
+function historyPanel() {
+  const box = el('div','panel');
+  box.append(el('h3', null, 'Previous runs'));
+  box.append(el('div','hint',
+    'Reopen any run to review what was decided. Approved steps stay approved, and your dismissals and overrides are still editable.'));
+
+  S.history.forEach(h => box.append(historyRow(h)));
+  return box;
+}
+
+function historyRow(h) {
+  const row = el('div','hrow');
+
+  const main = el('div','hmain');
+  const t1 = el('div','ht');
+  t1.append(document.createTextNode(h.title || h.screenplay_id));
+  if (h.draft) t1.append(el('span','hdraft', h.draft));
+  main.append(t1);
+
+  const bits = [];
+  bits.push(h.complete ? 'Complete' : `Stopped at ${cap(h.current_stage || '—')}`);
+  bits.push(`${h.stages_done}/${h.stages_total} steps`);
+  bits.push(`${h.items} items`);
+  if (h.blocking) bits.push(`${h.blocking} blocking`);
+  if (h.overrides) bits.push(`${h.overrides} override${h.overrides===1?'':'s'}`);
+  if (h.dismissed) bits.push(`${h.dismissed} dismissed`);
+  bits.push(when(h.updated_at));
+  main.append(el('div','hm', bits.join(' · ')));
+  row.append(main);
+
+  const acts = el('div','hacts');
+  const open = el('button','act','Reopen');
+  open.onclick = () => resume(h.id);
+  acts.append(open);
+
+  if (h.report_id) {
+    const pdf = el('a','act', 'Report');
+    pdf.href = `/api/sessions/${h.id}/report.pdf`;
+    pdf.target = '_blank'; pdf.style.textDecoration = 'none';
+    acts.append(pdf);
+  }
+
+  const del = el('button','act danger-hover','Discard');
+  del.onclick = async () => {
+    if (!confirm(`Discard this run of ${h.title}? Decisions in it are lost. Your clearance ledger is not affected.`)) return;
+    await fetch(`/api/sessions/${h.id}`, { method:'DELETE' });
+    await loadHistory();
+    renderStart();
+  };
+  acts.append(del);
+  row.append(acts);
+  return row;
+}
+
+async function resume(sid) {
+  try {
+    S.sess = await api('/api/sessions/' + sid);
+    // Land on the step that still needs work, not back at the beginning.
+    const pending = S.stages.find(st => stState(st.id).status !== 'approved');
+    S.view = pending ? pending.id : S.stages[S.stages.length - 1].id;
+    S.trace = []; S.error = null;
+    document.querySelector('#rail').hidden = false;
+    renderAll();
+  } catch (e) { S.error = e.message; renderStart(); }
+}
+
+const cap = (s) => String(s).charAt(0).toUpperCase() + String(s).slice(1);
+
+function when(iso) {
+  const d = new Date(iso), mins = (Date.now() - d) / 60000;
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${Math.round(mins)} min ago`;
+  if (mins < 1440) return `${Math.round(mins/60)} h ago`;
+  return d.toLocaleDateString(undefined, { month:'short', day:'numeric' });
 }
 
 async function openSession() {
@@ -379,6 +467,7 @@ async function runStage(id, deep) {
     }
   } catch (e) { S.error = e.message; }
   S.running = false;
+  await loadHistory();
   renderAll();
 }
 
