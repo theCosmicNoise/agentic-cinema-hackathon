@@ -81,20 +81,20 @@ STAGE_ORDER = [
 
 STAGE_BLURB = {
     Stage.BREAKDOWN: "Read the screenplay and flag every element carrying legal exposure.",
-    Stage.TRIAGE: "Settle what is knowable by rule; plan a research objective for the rest.",
+    Stage.TRIAGE: "Settle what a rule already answers, and plan a question for the rest.",
     Stage.RESEARCH: "Verify each subject against the live web and collect citations.",
-    Stage.ADJUDICATE: "Rule on the evidence under the standard governing each category.",
-    Stage.SUBSTITUTE: "Propose replacements for blocked items and re-clear them.",
-    Stage.REPORT: "Assemble the E&O-ready clearance report.",
+    Stage.ADJUDICATE: "Rule on the evidence, using the test that governs each kind of item.",
+    Stage.SUBSTITUTE: "Propose replacements for blocked items, then re-check the replacements.",
+    Stage.REPORT: "Build the clearance report your E&O carrier asks for.",
 }
 
 STAGE_GATE = {
     Stage.BREAKDOWN: "Dismiss anything that is not a clearance subject, then approve the flag list.",
-    Stage.TRIAGE: "Confirm the research plan before spending live lookups.",
-    Stage.RESEARCH: "Inspect the sources behind each subject.",
+    Stage.TRIAGE: "Check what is queued before it spends live lookups.",
+    Stage.RESEARCH: "Open the sources and check they are on point.",
     Stage.ADJUDICATE: "Accept each ruling or overrule it. Your decision is what the report prints.",
     Stage.SUBSTITUTE: "Accept or reject each proposed replacement.",
-    Stage.REPORT: "Sign off.",
+    Stage.REPORT: "Sign off on the findings.",
 }
 
 

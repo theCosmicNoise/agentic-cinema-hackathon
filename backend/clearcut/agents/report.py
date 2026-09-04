@@ -1,5 +1,5 @@
 """
-Agent 6 — Report.
+Agent 6: Report.
 
 Emits the artifact the industry already recognises: a page-cited, annotated
 clearance report an E&O carrier's counsel can read top to bottom.
@@ -129,7 +129,7 @@ class ReportAgent:
             str(path), pagesize=LETTER,
             leftMargin=0.85 * inch, rightMargin=0.85 * inch,
             topMargin=0.75 * inch, bottomMargin=0.75 * inch,
-            title=f"Script Clearance Report — {report.script.title}",
+            title=f"Script Clearance Report: {report.script.title}",
             author="CLEARCUT",
         )
 
@@ -158,7 +158,7 @@ class ReportAgent:
             Paragraph("SCRIPT CLEARANCE REPORT", s["title"]),
             Paragraph(
                 f"{_esc(m.title)}"
-                + (f" — {_esc(m.author)}" if m.author else "")
+                + (f", {_esc(m.author)}" if m.author else "")
                 + (f"<br/>{_esc(draft)}" if draft else "")
                 + f"<br/>{m.page_count} pages · report {r.report_id}",
                 s["subtitle"],
@@ -211,10 +211,10 @@ class ReportAgent:
             ),
             Spacer(1, 14),
             Paragraph(
-                "This report identifies material in the screenplay that may require "
-                "clearance, licensing or revision before production. Every ruling is "
-                "supported by the sources cited beneath it. It is prepared to support "
-                "review by production counsel and does not itself constitute legal advice.",
+                "This report lists material in the screenplay that may need clearance, "
+                "a licence, or a revision before production. The sources behind each "
+                "ruling are cited beneath it so they can be checked. It is prepared for "
+                "review by production counsel and is not itself legal advice.",
                 s["meta"],
             ),
         ]
@@ -237,7 +237,7 @@ class ReportAgent:
             out.append(
                 Paragraph(
                     f'<font color="{_COLOR[verdict].hexval()}">'
-                    f"<b>{_LABEL[verdict]}</b></font> — {len(group)} item"
+                    f"<b>{_LABEL[verdict]}</b></font> &nbsp;{len(group)} item"
                     f"{'s' if len(group) != 1 else ''}",
                     s["h2"],
                 )
@@ -287,7 +287,7 @@ class ReportAgent:
         if sub and sub.verified_clear:
             block.append(
                 Paragraph(
-                    f"RECOMMENDED REPLACEMENT: {_esc(sub.proposed)} — re-cleared and "
+                    f"RECOMMENDED REPLACEMENT: {_esc(sub.proposed)}, re-checked and "
                     f"verified {sub.verification_verdict.value if sub.verification_verdict else 'clear'}"
                     + (
                         f" (rejected: {_esc(', '.join(sub.rejected_candidates))})"
@@ -307,7 +307,7 @@ class ReportAgent:
         elif sub and sub.attempts == 0:
             block.append(
                 Paragraph(
-                    "No replacement was proposed for this item — it still requires "
+                    "No replacement was proposed for this item. It still needs "
                     "a revision decided by the production.",
                     s["body"],
                 )
@@ -321,6 +321,6 @@ def _footer(canvas, doc):
     canvas.saveState()
     canvas.setFont("Helvetica", 7.5)
     canvas.setFillColor(colors.HexColor("#888888"))
-    canvas.drawString(0.85 * inch, 0.5 * inch, "CLEARCUT — automated script clearance")
+    canvas.drawString(0.85 * inch, 0.5 * inch, "CLEARCUT script clearance")
     canvas.drawRightString(LETTER[0] - 0.85 * inch, 0.5 * inch, f"Page {doc.page}")
     canvas.restoreState()

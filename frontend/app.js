@@ -1,4 +1,4 @@
-/* CLEARCUT — stage-gated clearance review.
+/* CLEARCUT: stage-gated clearance review.
 
    Every stage stops and waits for a person. Reviewer decisions are state,
    not annotations: a dismissed item never reaches research, an overruled
@@ -18,34 +18,34 @@ const VCLASS = { must_change:'blocking', license_required:'licensed', legal_revi
    should be able to work the whole pipeline from these three lines. */
 const GUIDE = {
   breakdown: {
-    what: 'Reads every page and flags each element that carries legal exposure — names, businesses, brands, addresses, phone numbers, plates, domains, songs, artwork, clips and real people.',
-    why:  'Anything missed here is invisible for the rest of the process. A single uncleared element can hold up your <b>E&O policy</b>, and without E&O a distributor will not release the picture.',
-    you:  'Skim the list and dismiss anything that is not genuinely a clearance subject. The agent deliberately over-flags — that is safer than under-flagging, but it means some noise reaches you.',
+    what: 'Reads every page and marks each element that carries legal exposure: character and company names, brands, addresses, phone numbers, plates, domains, songs, artwork, clips, and references to real people.',
+    why:  'Whatever is missed here stays invisible for the rest of the process. One uncleared element can hold up your <b>E&O policy</b>, and no distributor will release a picture without one.',
+    you:  'Read the list and dismiss anything that is not really a clearance subject. The agent flags generously on purpose. Missing an item is far more expensive than reading a few extra.',
   },
   triage: {
-    what: 'Sorts every flagged item into two piles: those settled by an industry rule, and those needing live verification against the web.',
-    why:  'Rules are exact and free. Nobody researches whether 555-0142 is a real number — the block is reserved. Spending lookups only where evidence actually decides the outcome keeps a feature script affordable.',
-    you:  'Check the research plan before it runs. Each objective is written around the legal theory for that category, not a generic keyword search.',
+    what: 'Splits the list in two: items an industry rule already settles, and items that need checking against live sources.',
+    why:  'Rules are exact and cost nothing. Nobody researches whether 555-0142 belongs to someone, because that block is reserved for fiction. Spending lookups only where evidence changes the answer is what keeps a feature-length script affordable.',
+    you:  'Look at what is queued before it runs. Each question is framed around the legal test for that kind of item, not just the words on the page.',
   },
   research: {
-    what: 'Verifies each remaining subject against the live web through Parallel, returning citations you can open and read.',
-    why:  'A ruling your insurer relies on has to be traceable to a source. A model cannot produce a USPTO registration number from memory — only a lookup can show it.',
-    you:  'Open a few sources and confirm the evidence is on-point. If a subject came back thin, that is worth knowing before it is ruled on.',
+    what: 'Checks each remaining subject against live sources through Parallel and brings back citations you can open.',
+    why:  'Your insurer relies on these rulings, so each one has to trace back to something real. A model cannot produce a USPTO registration number from memory. Only a lookup can.',
+    you:  'Open a few sources and check they are on point. If a subject came back thin, better to know that now than after the ruling.',
   },
   adjudicate: {
-    what: 'Issues one of five rulings on each subject, applying the standard that governs its category — tarnishment, defamation, public domain, sync-and-master, live referent.',
-    why:  'Exposure is the product of two things: whether a real referent exists, <b>and how your script treats it</b>. A real company named in passing is usually fine. The same company shown committing fraud is not.',
-    you:  'You are the adjudicator of record. Accept each ruling or overrule it — your verdict is what the report prints, and the report is what your carrier reads.',
+    what: 'Rules on each subject using the test that governs its category: tarnishment, defamation, public domain, sync and master rights, or whether a real referent exists.',
+    why:  'Two things create exposure: a real referent, <b>and how your script treats it</b>. A real company mentioned in passing is usually fine. The same company shown committing fraud is not.',
+    you:  'You are the adjudicator of record. Accept a ruling or overrule it. What you decide is what the report prints, and the report is what your carrier reads.',
   },
   substitute: {
-    what: 'For everything you marked must-change, proposes a replacement and then re-clears that replacement through the same research and adjudication the original failed.',
-    why:  'A clearance house tells you no. It does not tell you what to use instead, because vetting a replacement is another billable pass — so productions guess, and the next draft brings fresh problems.',
-    you:  'Accept or reject each proposal. Rejected fixes do not appear in the report. Replacements preserve register, era and syllable count so dialogue still scans.',
+    what: 'Takes everything you marked must-change, proposes a replacement, then puts that replacement through the same research and ruling the original just failed.',
+    why:  'A clearance house tells you no. It rarely tells you what to use instead, because vetting a replacement is another billable pass. So productions guess, and the next draft arrives with new problems.',
+    you:  'Accept or reject each proposal. Rejected ones stay out of the report. Replacements are built to keep the register, period and syllable count so dialogue still reads.',
   },
   report: {
-    what: 'Assembles the page-cited clearance report, with every ruling carrying the sources behind it and every accepted replacement noted.',
-    why:  'This is the document your E&O carrier requires before binding coverage, and the one production counsel signs off against.',
-    you:  'Review the tally, then generate and download the PDF. Approving it commits these rulings to your clearance ledger, so the next draft only re-clears what actually changed.',
+    what: 'Builds the page-cited clearance report, with sources under every ruling and any replacement you accepted written in.',
+    why:  'This is the document your E&O carrier asks for before binding coverage, and what production counsel signs against.',
+    you:  'Check the tally, then generate the PDF. Approving it writes these rulings into your clearance ledger, so the next draft only re-checks what actually changed.',
   },
 };
 
@@ -83,13 +83,13 @@ function renderStart() {
 
   w.append(el('h1', null, 'Clear a screenplay'));
   const lede = el('p', 'lede');
-  lede.innerHTML = 'Every production must obtain a <b>script clearance report</b> before an Errors &amp; Omissions insurer will bind coverage — and without E&amp;O, no distributor will release the picture. CLEARCUT runs that audit as a reviewed pipeline: six agents do the work, you approve every step.';
+  lede.innerHTML = 'Before an Errors &amp; Omissions insurer will bind coverage, every production has to produce a <b>script clearance report</b>. No E&amp;O, no distribution. CLEARCUT runs that audit as a reviewed pipeline. Six agents do the work. You approve every step.';
   w.append(lede);
 
   const ex = el('div', 'explain');
-  [['01','Upload a draft','Final Draft PDF, Fountain, or plain text. Scene and page numbers are read straight off the page.'],
-   ['02','Approve each stage','Nothing advances without you. Dismiss false flags, overrule rulings, reject fixes you do not want.'],
-   ['03','Deliver the report','A page-cited PDF with sources behind every ruling — and a ledger so the next draft only re-clears what changed.']]
+  [['01','Upload a draft','Final Draft PDF, Fountain or plain text. Scene and page numbers come straight off the page.'],
+   ['02','Approve each step','Nothing moves without you. Dismiss false flags, overrule rulings, reject fixes you do not want.'],
+   ['03','Take the report','A page-cited PDF with sources under every ruling, plus a ledger so your next draft only re-checks what changed.']]
    .forEach(([n,h,p]) => {
      const c = el('div','ex'); c.append(el('div','n',n), el('h4',null,h), el('p',null,p)); ex.append(c);
    });
@@ -100,12 +100,12 @@ function renderStart() {
   /* upload */
   const up = el('div', 'panel');
   up.append(el('h3', null, 'Upload your screenplay'));
-  up.append(el('div', 'hint', 'PDF, .fountain or .txt, up to 25 MB. Your file stays on this deployment — it is parsed locally and only the flagged subjects are ever sent for verification.'));
+  up.append(el('div', 'hint', 'PDF, .fountain or .txt, up to 25 MB. Your script stays on this deployment. It is parsed here, and only the flagged subjects are sent out for verification.'));
   const drop = el('label', 'drop');
   const inp = el('input'); inp.type = 'file'; inp.accept = '.pdf,.fountain,.txt';
   drop.append(inp,
     el('div', 'big', S.uploading ? 'Reading screenplay…' : 'Choose a file or drop it here'),
-    el('div', 'sm', 'Final Draft exports work as-is — revision colour and draft date are detected automatically.'));
+    el('div', 'sm', 'Final Draft exports work as they are. Revision colour and draft date are picked up automatically.'));
   inp.onchange = () => inp.files[0] && doUpload(inp.files[0]);
   ['dragenter','dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('over'); }));
   ['dragleave','drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('over'); }));
@@ -117,7 +117,7 @@ function renderStart() {
 
   const pick = el('div', 'panel');
   pick.append(el('h3', null, 'Your scripts'));
-  pick.append(el('div', 'hint', 'Drafts of the same picture share a clearance ledger, so a revision is measured against the draft before it.'));
+  pick.append(el('div', 'hint', 'Drafts of one picture share a clearance ledger, so each revision is measured against the draft before it.'));
   const list = el('div');
   S.drafts.forEach(d => list.append(draftCard(d)));
   pick.append(list);
@@ -203,7 +203,7 @@ function historyPanel() {
   const box = el('div','panel');
   box.append(el('h3', null, 'Previous runs'));
   box.append(el('div','hint',
-    'Reopen any run to review what was decided. Approved steps stay approved, and your dismissals and overrides are still editable.'));
+    'Reopen a run to see what was decided. Approved steps stay approved, and your dismissals and overrides can still be changed.'));
 
   S.history.forEach(h => box.append(historyRow(h)));
   return box;
@@ -219,7 +219,7 @@ function historyRow(h) {
   main.append(t1);
 
   const bits = [];
-  bits.push(h.complete ? 'Complete' : `Stopped at ${cap(h.current_stage || '—')}`);
+  bits.push(h.complete ? 'Complete' : `Stopped at ${cap(h.current_stage || 'start')}`);
   bits.push(`${h.stages_done}/${h.stages_total} steps`);
   bits.push(`${h.items} items`);
   if (h.blocking) bits.push(`${h.blocking} blocking`);
@@ -299,7 +299,7 @@ function renderRail() {
       if (s.status === 'approved') { cls='done'; label='Approved'; }
       else if (s.status === 'awaiting_review') { cls='review'; label='Needs your review'; }
       else if (s.status === 'running') { cls='busy'; label='Running…'; }
-      else if (s.status === 'error') { cls='err'; label='Failed — can retry'; }
+      else if (s.status === 'error') { cls='err'; label='Failed, can retry'; }
       else label = 'Ready to run';
     }
     const b = el('button', `step ${cls}` + (open?'':' locked') + (S.view===st.id?' sel':''));
@@ -403,9 +403,9 @@ function enginePicker() {
   box.append(el('div','label','How hard should it look?'));
 
   [['fast', 'One search per subject',
-    `About ${Math.max(1, Math.round(n * 3 / 60))}–${Math.max(2, Math.round(n * 8 / 60))} min for ${n} subjects. Every subject gets a single web search framed on its category. Enough to settle most drafts.`],
+    `About ${Math.max(1, Math.round(n * 3 / 60))} to ${Math.max(2, Math.round(n * 8 / 60))} minutes for ${n} subjects. One web search each, framed on the category. Enough for most drafts.`],
    ['deep', 'Agent-directed investigation',
-    `Roughly ${Math.max(2, Math.round(n * 60 / 60 / 5))}–${Math.max(4, Math.round(n * 100 / 60 / 5))} min. The agent decides per subject: one search for a common surname, multi-hop research for a music cue or an organisation your script shows doing something wrong. Run this on a draft going to your insurer.`]]
+    `Roughly ${Math.max(2, Math.round(n * 60 / 60 / 5))} to ${Math.max(4, Math.round(n * 100 / 60 / 5))} minutes. The agent picks its own depth: one search for a common surname, multi-hop research for a music cue or a company your script shows doing something wrong. Use this on a draft going to your insurer.`]]
   .forEach(([k, title, blurb]) => {
     const on = (k === 'deep') === !!S.deep;
     const b = el('button','opt' + (on ? ' on' : ''));
@@ -488,9 +488,9 @@ function bodyFor(stage) {
     const notes = S.sess.triage_notes || {};
     const ruled = items.filter(i => (notes[i.id]||'').startsWith('rule ·'));
     const res = items.filter(i => notes[i.id] && !notes[i.id].startsWith('rule ·'));
-    if (ruled.length) { w.append(gbar(`Settled by rule — ${ruled.length}, no lookup spent`)); ruled.forEach(i => w.append(card(i,{triage:true}))); }
-    if (res.length) { w.append(gbar(`Queued for live verification — ${res.length}`)); res.forEach(i => w.append(card(i,{triage:true}))); }
-    if (!ruled.length && !res.length) w.append(msg('Every subject carried forward from your ledger — nothing in this draft needs re-clearing.'));
+    if (ruled.length) { w.append(gbar(`Settled by rule (${ruled.length}), no lookup spent`)); ruled.forEach(i => w.append(card(i,{triage:true}))); }
+    if (res.length) { w.append(gbar(`Queued for live verification (${res.length})`)); res.forEach(i => w.append(card(i,{triage:true}))); }
+    if (!ruled.length && !res.length) w.append(msg('Every subject carried forward from your ledger. Nothing in this draft needs re-checking.'));
   }
 
   else if (stage === 'research') {
@@ -526,7 +526,7 @@ function bodyFor(stage) {
       VERDICTS.forEach(([v,l]) => {
         const g = live.filter(i => eff(i.id) === v);
         if (!g.length) return;
-        w.append(gbar(`${l} — ${g.length}`));
+        w.append(gbar(`${l} (${g.length})`));
         g.forEach(i => w.append(card(i,{verdict:true})));
       });
     }
@@ -641,7 +641,7 @@ function card(it, mode) {
   if (mode.triage) {
     const t = S.sess.triage_notes?.[it.id] || '';
     c.append(t.startsWith('rule ·')
-      ? el('div','why',`Settled deterministically — ${t.replace('rule · ','')}. No lookup needed.`)
+      ? el('div','why',`Settled by rule: ${t.replace('rule · ','')}. No lookup needed.`)
       : el('div','obj',`Will ask: ${t.slice(0,300)}`));
   }
 
@@ -667,7 +667,7 @@ function card(it, mode) {
   if (mode.sub) {
     if (sub?.verified_clear) {
       const f = el('div','fixbox');
-      f.append(el('b',null,`Proposed: ${sub.proposed}`), document.createTextNode(` — re-cleared and verified in ${sub.attempts} attempt${sub.attempts===1?'':'s'}`));
+      f.append(el('b',null,`Proposed: ${sub.proposed}`), document.createTextNode(`, re-checked and verified in ${sub.attempts} attempt${sub.attempts===1?'':'s'}`));
       if (sub.rejected_candidates?.length) f.append(el('div','rej',`Rejected on the way: ${sub.rejected_candidates.join(', ')}`));
       c.append(f);
     } else if (sub?.rejected_candidates?.length) {
@@ -684,7 +684,7 @@ function card(it, mode) {
   const acts = el('div','acts');
   if (mode.dismiss) {
     acts.append(el('span','prompt','Is this a real clearance subject?'));
-    const b = el('button','act danger'+(d.dismissed?' on':''), d.dismissed?'Dismissed — click to restore':'Not a clearance subject');
+    const b = el('button','act danger'+(d.dismissed?' on':''), d.dismissed?'Dismissed, click to restore':'Not a clearance subject');
     b.onclick = () => decide(it.id,{ dismissed: !d.dismissed });
     acts.append(b);
   }
