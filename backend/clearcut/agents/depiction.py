@@ -177,7 +177,7 @@ class DepictionAgent:
         if not items:
             return items
 
-        acts = self._findings(script)
+        acts = self._findings(script, items)
         if acts is None:
             self._emit(
                 AgentEvent(
@@ -206,18 +206,34 @@ class DepictionAgent:
             )
             return items
 
+        # The roles the findings recorded are authoritative. They are an explicit,
+        # checkable statement of what the film shows, so a subject the findings
+        # place in a wrongful role is negative whether or not the judging call
+        # happened to return an entry for it. Leaving that to the judge alone
+        # meant an omitted subject silently kept its stale per-scene flag, which
+        # is how the antagonist came back neutral in one draft while the findings
+        # named him the perpetrator.
+        roles = self._roles(acts)
         changed = 0
         for it in items:
-            j = judged.get(_key(it.value))
-            if j is None:
+            key = _key(it.value)
+            role_verdict = _from_roles(roles.get(key))
+            j = judged.get(key)
+
+            if role_verdict is not None:
+                negative = role_verdict
+                reason = j.reason if (j and j.negative == negative) else _role_reason(roles[key])
+            elif j is not None:
+                negative = j.negative
+                reason = j.reason
+            else:
                 continue
-            if j.negative != it.is_depicted_negatively:
+
+            if negative != it.is_depicted_negatively:
                 changed += 1
-            # The global read supersedes the per-scene guess in both directions:
-            # a scene-local flag can be a false positive just as easily.
-            it.is_depicted_negatively = j.negative
-            if j.negative and j.reason.strip():
-                it.context = (it.context or "") + f" | Depiction: {j.reason.strip()}"
+            it.is_depicted_negatively = negative
+            if negative and reason.strip():
+                it.context = (it.context or "") + f" | Depiction: {reason.strip()}"
 
         neg = sum(1 for i in items if i.is_depicted_negatively)
         self._emit(
@@ -234,10 +250,20 @@ class DepictionAgent:
         return items
 
     # ------------------------------------------------------------------ #
-    def _findings(self, script: ParsedScreenplay) -> list[_Act] | None:
+    def _findings(
+        self, script: ParsedScreenplay, items: list[ClearableItem]
+    ) -> list[_Act] | None:
+        # The subject list goes in so entities come back under the same names.
+        # Without it the step writes whichever form the scene used, and a
+        # finding naming "Cortland" never connects to the subject
+        # "Cortland Voss", which silently drops the antagonist from the review.
+        known = "\n".join(f"- {it.value}" for it in items)
         prompt = (
             f"SCREENPLAY\n{'=' * 60}\n{script.raw[:120_000]}\n{'=' * 60}\n\n"
-            "Write down the wrongdoing this script depicts."
+            f"SUBJECTS ALREADY IDENTIFIED IN THIS SCRIPT:\n{known}\n\n"
+            "Write down the wrongdoing this script depicts. When an entity you "
+            "record is one of the subjects listed above, name it EXACTLY as it "
+            "appears in that list, not as the scene happens to write it."
         )
         try:
             raw = get_gemini().generate_structured(
@@ -253,6 +279,14 @@ class DepictionAgent:
                 out.append(_Act.model_validate(row))
             except Exception:  # noqa: BLE001, S112
                 continue
+        return out
+
+    @staticmethod
+    def _roles(acts: list[_Act]) -> dict[str, set[str]]:
+        out: dict[str, set[str]] = {}
+        for a in acts:
+            for inv in a.involves:
+                out.setdefault(_key(inv.entity), set()).add(inv.role.strip().lower())
         return out
 
     def _judge(
@@ -287,6 +321,28 @@ class DepictionAgent:
                 continue
             judged[_key(j.subject)] = j
         return judged
+
+
+# Roles that mean the film shows the subject caught up in the wrongdoing.
+_NEGATIVE_ROLES = {"perpetrator", "instrument", "employer", "venue", "misused"}
+# Roles that do not, on their own, create exposure.
+_NEUTRAL_ROLES = {"victim", "opposing"}
+
+
+def _from_roles(roles: set[str] | None) -> bool | None:
+    """Decide from the recorded roles, or None if they do not settle it."""
+    if not roles:
+        return None
+    if roles & _NEGATIVE_ROLES:
+        return True
+    if roles <= _NEUTRAL_ROLES:
+        return False
+    return None
+
+
+def _role_reason(roles: set[str]) -> str:
+    named = sorted(roles & _NEGATIVE_ROLES) or sorted(roles)
+    return "recorded in the script's wrongdoing as " + ", ".join(named)
 
 
 def _key(value: str) -> str:
