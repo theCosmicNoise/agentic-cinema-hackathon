@@ -49,7 +49,7 @@ const GUIDE = {
   },
 };
 
-const S = { drafts: [], draft: null, stages: [], sess: null, view: null, running: false, runningStage: null, trace: [], error: null, uploading: false };
+const S = { deep: false, drafts: [], draft: null, stages: [], sess: null, view: null, running: false, runningStage: null, trace: [], error: null, uploading: false };
 
 /* ---------------- boot ---------------- */
 async function boot() {
@@ -291,12 +291,39 @@ function traceRow(e) {
 }
 
 function runPrompt(meta) {
+  const wrap = el('div');
+
+  // Research is the one step where the production chooses how much effort to
+  // buy, so the trade-off is stated in full rather than hidden behind a toggle.
+  if (meta.id === 'research') wrap.append(enginePicker());
+
   const box = el('div','gate');
   box.append(el('div','ask', S.running ? 'Working…' : 'Nothing has run for this step yet.'));
   const b = el('button','btn', S.running ? 'Working…' : `Run ${meta.name.toLowerCase()}`);
   b.disabled = S.running;
-  b.onclick = () => runStage(meta.id);
+  b.onclick = () => runStage(meta.id, meta.id === 'research' ? S.deep : false);
   box.append(b);
+  wrap.append(box);
+  return wrap;
+}
+
+function enginePicker() {
+  const n = Object.values(S.sess.triage_notes || {})
+    .filter(x => !String(x).startsWith('rule ·')).length;
+  const box = el('div','engine');
+  box.append(el('div','label','How hard should it look?'));
+
+  [['fast', 'One search per subject',
+    `About ${Math.max(1, Math.round(n * 3 / 60))}–${Math.max(2, Math.round(n * 8 / 60))} min for ${n} subjects. Every subject gets a single web search framed on its category. Enough to settle most drafts.`],
+   ['deep', 'Agent-directed investigation',
+    `Roughly ${Math.max(2, Math.round(n * 60 / 60 / 5))}–${Math.max(4, Math.round(n * 100 / 60 / 5))} min. The agent decides per subject: one search for a common surname, multi-hop research for a music cue or an organisation your script shows doing something wrong. Run this on a draft going to your insurer.`]]
+  .forEach(([k, title, blurb]) => {
+    const on = (k === 'deep') === !!S.deep;
+    const b = el('button','opt' + (on ? ' on' : ''));
+    b.append(el('div','ot', title), el('div','ob', blurb));
+    b.onclick = () => { S.deep = (k === 'deep'); renderAll(); };
+    box.append(b);
+  });
   return box;
 }
 
@@ -328,11 +355,12 @@ function nextStage() {
 }
 
 /* ---------------- run a stage ---------------- */
-async function runStage(id) {
+async function runStage(id, deep) {
   S.running = true; S.runningStage = id; S.trace = [];
   renderAll();
   try {
-    const res = await fetch(`/api/sessions/${S.sess.id}/stage/${id}`, { method:'POST' });
+    const q = deep ? '?deep=true' : '';
+    const res = await fetch(`/api/sessions/${S.sess.id}/stage/${id}${q}`, { method:'POST' });
     const rd = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
     while (true) {
       const { done, value } = await rd.read(); if (done) break;
