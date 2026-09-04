@@ -49,7 +49,7 @@ const GUIDE = {
   },
 };
 
-const S = { deep: false, drafts: [], draft: null, stages: [], sess: null, view: null, running: false, runningStage: null, trace: [], error: null, uploading: false };
+const S = { deep: false, buckets: [], open: {}, drafts: [], draft: null, stages: [], sess: null, view: null, running: false, runningStage: null, trace: [], error: null, uploading: false };
 
 /* ---------------- boot ---------------- */
 async function boot() {
@@ -59,6 +59,7 @@ async function boot() {
     $('#d-par').classList.add(h.parallel_configured ? 'on' : 'off');
   } catch {}
   S.stages = await api('/api/stages');
+  S.buckets = await api('/api/buckets');
   await loadDrafts();
   renderStart();
 }
@@ -388,7 +389,10 @@ function bodyFor(stage) {
   const dec = (id) => S.sess.decisions?.[id] || {};
 
   if (stage === 'breakdown') {
-    items.forEach(i => w.append(card(i, { dismiss:true })));
+    w.append(grouped(items, { dismiss:true }, list => {
+      const d = list.filter(i => dec(i.id).dismissed).length;
+      return d ? `${list.length - d} kept · ${d} dismissed` : `${list.length}`;
+    }));
   }
 
   else if (stage === 'triage') {
@@ -403,16 +407,40 @@ function bodyFor(stage) {
   else if (stage === 'research') {
     const got = items.filter(i => S.sess.evidence?.[i.id]);
     if (!got.length) w.append(msg('No new verification was required for this draft.'));
-    got.forEach(i => w.append(card(i,{evidence:true})));
+    else w.append(grouped(got, { evidence:true }, list => {
+      const src = list.reduce((n,i) => n + (S.sess.evidence?.[i.id]?.citations?.length || 0), 0);
+      return `${list.length} · ${src} sources`;
+    }));
   }
 
   else if (stage === 'adjudicate') {
-    VERDICTS.forEach(([v,l]) => {
-      const g = items.filter(i => !dec(i.id).dismissed && eff(i.id) === v);
-      if (!g.length) return;
-      w.append(gbar(`${l} — ${g.length}`));
-      g.forEach(i => w.append(card(i,{verdict:true})));
+    const live = items.filter(i => !dec(i.id).dismissed);
+
+    // Two legitimate ways to work this list: by ruling, because the blockers
+    // are what stop the picture, or by type, because that is how the work gets
+    // handed to departments. Ruling is the default.
+    const ax = el('div','axis');
+    ax.append(el('span','lbl','Group by'));
+    [['ruling','Ruling'],['type','Type']].forEach(([k,lbl]) => {
+      const b = el('button','axopt' + ((S.axis||'ruling')===k ? ' on':''), lbl);
+      b.onclick = () => { S.axis = k; renderAll(); };
+      ax.append(b);
     });
+    w.append(ax);
+
+    if ((S.axis||'ruling') === 'type') {
+      w.append(grouped(live, { verdict:true }, list => {
+        const block = list.filter(i => ['must_change','license_required','legal_review'].includes(eff(i.id))).length;
+        return block ? `${list.length} · ${block} blocking` : `${list.length} · all clear`;
+      }));
+    } else {
+      VERDICTS.forEach(([v,l]) => {
+        const g = live.filter(i => eff(i.id) === v);
+        if (!g.length) return;
+        w.append(gbar(`${l} — ${g.length}`));
+        g.forEach(i => w.append(card(i,{verdict:true})));
+      });
+    }
   }
 
   else if (stage === 'substitute') {
@@ -439,6 +467,65 @@ function bodyFor(stage) {
     }
   }
   return w;
+}
+
+
+/* ---------------- buckets ----------------
+   Seventeen categories is the right vocabulary for the legal theory and the
+   wrong one for the person reviewing. Group by who has to act. */
+function bucketOf(cat) {
+  const b = S.buckets.find(x => (x.categories || []).includes(cat));
+  return b ? b.id : 'other';
+}
+
+function byBucket(items) {
+  const m = new Map();
+  items.forEach(i => {
+    const k = bucketOf(i.category);
+    if (!m.has(k)) m.set(k, []);
+    m.get(k).push(i);
+  });
+  // Preserve the taxonomy's order rather than insertion order.
+  return S.buckets.map(b => [b, m.get(b.id) || []]).filter(([, v]) => v.length);
+}
+
+/* Render items grouped into collapsible sections. `count` labels the badge,
+   letting each stage say what its own numbers mean. */
+function grouped(items, mode, count) {
+  const wrap = el('div');
+  const groups = byBucket(items);
+  if (!groups.length) return wrap;
+
+  const bar = el('div', 'bulk');
+  bar.append(el('span', null, `${items.length} in ${groups.length} groups`));
+  const ea = el('button', 'link', 'Expand all');
+  ea.onclick = () => { groups.forEach(([b]) => S.open[b.id] = true); renderAll(); };
+  const ca = el('button', 'link', 'Collapse all');
+  ca.onclick = () => { groups.forEach(([b]) => S.open[b.id] = false); renderAll(); };
+  bar.append(ea, ca);
+  wrap.append(bar);
+
+  groups.forEach(([b, list]) => {
+    // Default open on first sight so nothing is hidden from a first-time reviewer.
+    if (S.open[b.id] === undefined) S.open[b.id] = true;
+    const openNow = !!S.open[b.id];
+
+    const sec = el('div', 'bucket' + (openNow ? ' open' : ''));
+    const head = el('button', 'bhead');
+    head.append(el('span', 'caret', openNow ? '▾' : '▸'));
+    head.append(el('span', 'bname', b.name));
+    const badge = count ? count(list) : `${list.length}`;
+    head.append(el('span', 'bcount', badge));
+    head.onclick = () => { S.open[b.id] = !openNow; renderAll(); };
+    sec.append(head);
+
+    const body = el('div', 'bbody');
+    body.append(el('div', 'bblurb', b.blurb));
+    list.forEach(i => body.append(card(i, mode)));
+    if (openNow) sec.append(body);
+    wrap.append(sec);
+  });
+  return wrap;
 }
 
 const eff = (id) => S.sess.decisions?.[id]?.verdict_override || S.sess.rulings?.[id]?.verdict || null;

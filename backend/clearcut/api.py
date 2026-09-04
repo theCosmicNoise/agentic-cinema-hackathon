@@ -25,6 +25,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from clearcut.core.buckets import taxonomy
 from clearcut.core.config import get_settings
 from clearcut.core.ledger import ClearanceLedger
 import re
@@ -282,6 +283,12 @@ def stages() -> list[dict]:
         {"id": s.value, "name": s.value.title(), "does": STAGE_BLURB[s], "gate": STAGE_GATE[s]}
         for s in STAGE_ORDER
     ]
+
+
+@app.get("/api/buckets")
+def buckets() -> list[dict]:
+    """How the review groups items — by who has to act on them."""
+    return taxonomy()
 
 
 @app.post("/api/sessions")
