@@ -436,3 +436,16 @@ select.override {
 .draft:hover .remove, .draft:focus-within .remove { opacity: 1; }
 .draft .remove:hover { color: var(--must); border-color: #F0CFCC; background: var(--must-bg); }
 .draft .remove:focus-visible { opacity: 1; outline: 2px solid var(--must); outline-offset: 1px; }
+
+/* Remove control on uploaded scripts. Samples have none — they are fixtures. */
+.draft { position: relative; }
+.draft .remove {
+  position: absolute; top: 8px; right: 8px;
+  width: 22px; height: 22px; line-height: 1;
+  border: 1px solid transparent; border-radius: 5px;
+  background: transparent; color: var(--faint);
+  font-size: 16px; cursor: pointer; opacity: 0;
+  transition: opacity .12s, background .12s, color .12s;
+}
+.draft:hover .remove, .draft .remove:focus-visible { opacity: 1; }
+.draft .remove:hover { background: var(--must-bg); color: var(--must); border-color: #F0CFCC; }

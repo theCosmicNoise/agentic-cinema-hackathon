@@ -35,6 +35,7 @@ from pydantic import BaseModel, Field
 
 from clearcut.agents.adjudicate import AdjudicationAgent
 from clearcut.agents.breakdown import BreakdownAgent
+from clearcut.agents.investigator import InvestigatorAgent
 from clearcut.agents.research import ResearchAgent
 from clearcut.agents.substitute import SubstitutionAgent
 from clearcut.agents.triage import TriageAgent, TriageDecision
@@ -335,13 +336,32 @@ def _run_triage(session: Session, emit: EmitFn) -> None:
 
 
 def _run_research(session: Session, emit: EmitFn, deep: bool) -> None:
+    """Verify the outstanding subjects.
+
+    Two engines, because the right amount of effort is not the same for every
+    production. The scripted pass runs one search per subject and is fast enough
+    to sit through. The investigator is an ADK agent holding Parallel's
+    capabilities as tools, and decides per subject how hard to look — one search
+    for a common surname, multi-hop research for a music cue or a hospital shown
+    falsifying records. It costs roughly a minute a subject and is worth it on a
+    draft going to an insurer.
+    """
     decisions = _decisions(session)
     svc = ParallelResearchService()
-    ev = ResearchAgent(service=svc, emit=emit, deep_verify=deep).run(decisions)
+
+    if deep:
+        ev = InvestigatorAgent(service=svc, emit=emit, max_workers=5).run(decisions)
+        engine = "agent-directed"
+    else:
+        ev = ResearchAgent(service=svc, emit=emit, deep_verify=False).run(decisions)
+        engine = "one search per subject"
+
     session.evidence.update(ev)
     cites = sum(len(e.citations) for e in ev.values())
+    escalated = sum(1 for e in ev.values() if e.escalated)
     session.stage(Stage.RESEARCH).summary = (
-        f"{len(ev)} subjects verified · {cites} sources · {svc.search_calls} Parallel calls"
+        f"{len(ev)} subjects verified · {cites} sources · {engine}"
+        + (f" · {escalated} escalated to deep research" if escalated else "")
     )
 
 

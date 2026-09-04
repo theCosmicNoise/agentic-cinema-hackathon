@@ -19,6 +19,7 @@ from typing import Callable
 
 from pydantic import BaseModel, Field
 
+from clearcut.agents.depiction import DepictionAgent
 from clearcut.core.coalesce import coalesce
 from clearcut.core.models import (
     AgentEvent,
@@ -104,6 +105,11 @@ class BreakdownAgent:
 
         raw_items = self._merge(results)
         items, notes = coalesce(raw_items)
+
+        # Scene-parallel extraction cannot see how the script as a whole treats a
+        # subject, and depiction decides half of every clearance ruling. Re-judge
+        # it globally now that the subject list is settled.
+        items = DepictionAgent(emit=self._emit).run(script, items)
 
         folded = len(raw_items) - len(items)
         if folded:
