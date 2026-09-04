@@ -86,6 +86,7 @@ class GeminiClient:
         temperature: float = 0.1,
         thinking_budget: int = 0,
         max_attempts_per_model: int = 2,
+        cache_salt: int | None = None,
     ):
         """Return `schema`-shaped data, walking the fallback chain on failure."""
         cfg = types.GenerateContentConfig(
@@ -100,6 +101,9 @@ class GeminiClient:
                 "kind": "structured", "prompt": prompt, "system": system,
                 "schema": str(schema), "temperature": temperature,
                 "thinking": thinking_budget, "chain": self._chain,
+                # Deliberately-independent samples of the same prompt must not
+                # collapse onto one cache entry.
+                "salt": cache_salt,
             }
         )
         if (cached := self._cache.get(ck)) is not None:

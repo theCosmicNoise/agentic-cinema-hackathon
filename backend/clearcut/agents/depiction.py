@@ -1,26 +1,40 @@
 """
 Whole-script depiction pass.
 
-Breakdown reads scenes in parallel, which is fast and accurate for *finding*
+Breakdown reads scenes in parallel, which is fast and accurate for FINDING
 subjects but structurally blind to how the script as a whole treats them. In
 THE LONG ODDS, scene 4 shows a man reading a printout with a hospital's name on
 it. Read alone that is neutral. Read against scenes 3, 5 and 6 it is a forged
-medical record in an insurance fraud, and the hospital is being depicted as the
-source of falsified documents.
+medical record, and the hospital is being shown as the source of falsified
+documents.
 
-That distinction is not a detail. Exposure is the product of two things: whether
-a real referent exists, and how the script treats it. Getting the second half
-wrong turns a defamation risk into a CLEAR.
+That distinction is not a detail. Exposure is the product of two things:
+whether a real referent exists, and how the script treats it. Getting the
+second half wrong turns a defamation risk into a CLEAR.
 
-So depiction is decided once, globally, against the full screenplay, after the
-subjects are known. One batched call rather than one per subject: the model
-needs the same script in context either way, and the subjects are judged more
-consistently when it sees them together.
+WHY THIS IS TWO STEPS. Asking one call to judge every subject against a full
+screenplay was measured to be unreliable in both directions. Over repeated runs
+of the identical script it scored between 62% and 100% against the fixture,
+with the number of subjects called negative swinging between 4 and 23. Neither
+majority nor union of several passes fixed it: majority was stable but wrong,
+because shallow passes outvoted thorough ones, and union inherited any single
+over-inclusive pass and marked the protagonist's own garage as negative.
+
+The instability is in the task shape, not the sampling. Twenty-odd
+simultaneous judgements against a long text is too much to hold at once.
+
+So the work is split. The first call reads the script and writes down what
+actually happens: each wrongful act, who commits it, and which named entities
+are caught up in it and in what role. That is a small, focused output. The
+second call judges subjects against that written finding rather than
+re-deriving the plot for each one, which turns the hard step into a lookup and
+gives the reviewer a reason they can check.
 """
 
 from __future__ import annotations
 
 import logging
+import re
 from typing import Callable
 
 from pydantic import BaseModel, Field
@@ -33,45 +47,97 @@ logger = logging.getLogger(__name__)
 
 EmitFn = Callable[[AgentEvent], None]
 
-SYSTEM = """You assess how a screenplay treats each named subject, for motion picture
-clearance. You are given the full screenplay and a list of subjects found in it.
+# --------------------------------------------------------------------------- #
+# Step 1: what actually happens in this script
+# --------------------------------------------------------------------------- #
+FINDINGS_SYSTEM = """You read a screenplay and write down the wrongdoing in it, for a
+motion picture clearance review. You are not judging anything yet. You are recording
+what the finished film would show an audience.
 
-For each subject decide whether the finished film would portray it in a way its owner,
-or a real person of that name, would object to.
+List every wrongful act the script depicts: crime, fraud, forgery, conspiracy,
+violence, corruption, professional misconduct, negligence, or the producing and
+authenticating of falsified documents.
 
-Mark a subject NEGATIVE when the script shows it, or shows it as connected to:
-- crime, fraud, forgery, conspiracy, violence, or corruption
-- professional misconduct, negligence, or incompetence
-- producing, carrying or authenticating falsified documents
-- being the instrument or setting of wrongdoing, even passively
+For each act, record:
+- what happens, in one plain sentence
+- who does it, by character name
+- every NAMED entity caught up in it, and the role it plays
 
-READ ACROSS THE WHOLE SCRIPT, not the line the subject appears on. Follow the plot to
-its conclusion, then ask what each subject ends up implicated in.
+Roles:
+  perpetrator  commits or directs the act
+  instrument   its name, premises, domain, paperwork or staff are used to carry it out
+  employer     a named company or institution the perpetrator is said to work for
+  venue        the named place the ACT ITSELF happens, including any street address
+               given for it
+  victim       harmed by it
+  opposing     works against the wrongdoing: investigates it, exposes it, or refuses
+               to take part
 
-Institutions and companies are the ones most often missed, so check these explicitly:
-- An institution whose NAME APPEARS ON a document the script later reveals to be
-  forged, falsified or fraudulent is depicted negatively. The audience is being shown
-  that institution's paperwork being faked, and its owner would object. It does not
-  matter that no character criticises it.
-- A company is depicted negatively when it is the VEHICLE for wrongdoing: its name,
-  premises, email domain or employees are used to run the scheme, even if the company
-  itself is never accused.
-- A person is depicted negatively when they commit wrongdoing, and ALSO when their
-  identity or signature is forged or misused as part of it.
+Record a location as venue ONLY when the wrongful act happens there. A place where a
+scene merely takes place is not a venue. A character's own home or workplace is not a
+venue because they are in it.
 
-Do not require an explicit accusation. Implication through the plot is enough.
+Record a character as "opposing" when the script has them uncovering or resisting the
+act, and record their workplace as opposing too. Being the protagonist of a story about
+fraud is not taking part in fraud.
 
-Mark NEUTRAL when the subject is set dressing, an incidental mention, or is treated
-straightforwardly with no adverse implication.
+Be exhaustive about named entities. If a character is introduced as working somewhere
+("Vandermeer at STATE FARM"), record that employer. If a document carries an
+institution's name, record that institution as instrument. If a summary line names
+roles rather than people ("same adjuster, same doctor, same signature"), resolve those
+roles to the characters who hold them earlier in the script and record their employers
+too.
 
-Be decisive. For each subject give a one-line reason grounded in what actually happens
-in the script — name the scene or the action, do not restate the category."""
+Record only what the script actually depicts. Do not invent acts."""
+
+
+class _Involvement(BaseModel):
+    entity: str = Field(description="The named entity, exactly as the script writes it")
+    role: str = Field(description="perpetrator | instrument | employer | venue | victim")
+
+
+class _Act(BaseModel):
+    what: str = Field(description="What happens, one plain sentence")
+    who: str = Field(default="", description="Character who does it")
+    involves: list[_Involvement] = Field(default_factory=list)
+
+
+# --------------------------------------------------------------------------- #
+# Step 2: judge the subjects against that finding
+# --------------------------------------------------------------------------- #
+JUDGE_SYSTEM = """You decide, for motion picture clearance, whether a screenplay
+portrays each subject in a way its owner, or a real person of that name, would object to.
+
+You are given a written finding of the wrongdoing in the script, and a list of subjects.
+Judge each subject against the finding. Do not re-read the plot; the finding is what the
+film shows.
+
+Mark NEGATIVE when the finding places the subject in any of these roles:
+  perpetrator, instrument, employer, or venue.
+
+A subject recorded as "opposing" is NEUTRAL even if it appears elsewhere in the
+finding, because the film shows it resisting the wrongdoing rather than doing it. The
+same is true of anything recorded only as victim.
+
+An entity is negative even when no character criticises it. An audience does not
+separate an employee's conduct from the employer whose name was attached to them, and
+seeing an institution's paperwork forged is seeing that institution's name misused.
+
+Mark NEUTRAL when:
+  - the subject does not appear in the finding at all
+  - the subject appears only as victim, or only as opposing
+  - the subject is set dressing or an incidental mention
+
+Being adjacent to a wrongdoer is not enough. The protagonist's own workplace is neutral
+unless the finding says it was used to carry something out.
+
+Give one entry per subject. The reason must cite the act from the finding, in one line."""
 
 
 class _Judgement(BaseModel):
-    subject: str = Field(description="The subject exactly as given to you")
-    negative: bool = Field(description="True if depicted in a way its owner would object to")
-    reason: str = Field(description="One line, grounded in what happens in the script")
+    subject: str
+    negative: bool
+    reason: str = Field(default="", description="One line, citing the act")
 
 
 class DepictionAgent:
@@ -83,45 +149,37 @@ class DepictionAgent:
     def run(
         self, script: ParsedScreenplay, items: list[ClearableItem]
     ) -> list[ClearableItem]:
-        """Re-decide depiction for every subject against the whole screenplay."""
         if not items:
             return items
 
-        listing = "\n".join(
-            f"- {it.value}  [{it.category.value}]" for it in items
-        )
-        prompt = (
-            f"FULL SCREENPLAY\n{'=' * 60}\n{script.raw[:120_000]}\n{'=' * 60}\n\n"
-            f"SUBJECTS FOUND IN IT ({len(items)}):\n{listing}\n\n"
-            f"Judge every subject listed. Return one entry per subject."
-        )
-
-        try:
-            raw = get_gemini().generate_structured(
-                prompt=prompt,
-                schema=list[_Judgement],
-                system=SYSTEM,
-                temperature=0.0,
-                thinking_budget=0,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Depiction pass failed, keeping per-scene flags: %s", exc)
+        acts = self._findings(script)
+        if acts is None:
             self._emit(
                 AgentEvent(
-                    agent=self.name,
-                    phase="error",
-                    message=f"Depiction pass unavailable ({exc}); per-scene flags retained",
+                    agent=self.name, phase="error",
+                    message="Could not read the script's wrongdoing; per-scene flags retained",
                 )
             )
             return items
 
-        judged: dict[str, _Judgement] = {}
-        for row in raw or []:
-            try:
-                j = _Judgement.model_validate(row)
-            except Exception:  # noqa: BLE001, S112
-                continue
-            judged[_key(j.subject)] = j
+        self._emit(
+            AgentEvent(
+                agent=self.name,
+                phase="findings",
+                message=f"Read {len(acts)} wrongful act(s) from the script",
+                payload={"acts": [a.what for a in acts]},
+            )
+        )
+
+        judged = self._judge(acts, items)
+        if judged is None:
+            self._emit(
+                AgentEvent(
+                    agent=self.name, phase="error",
+                    message="Depiction judgement unavailable; per-scene flags retained",
+                )
+            )
+            return items
 
         changed = 0
         for it in items:
@@ -133,7 +191,7 @@ class DepictionAgent:
             # The global read supersedes the per-scene guess in both directions:
             # a scene-local flag can be a false positive just as easily.
             it.is_depicted_negatively = j.negative
-            if j.negative:
+            if j.negative and j.reason.strip():
                 it.context = (it.context or "") + f" | Depiction: {j.reason.strip()}"
 
         neg = sum(1 for i in items if i.is_depicted_negatively)
@@ -150,8 +208,62 @@ class DepictionAgent:
         )
         return items
 
+    # ------------------------------------------------------------------ #
+    def _findings(self, script: ParsedScreenplay) -> list[_Act] | None:
+        prompt = (
+            f"SCREENPLAY\n{'=' * 60}\n{script.raw[:120_000]}\n{'=' * 60}\n\n"
+            "Write down the wrongdoing this script depicts."
+        )
+        try:
+            raw = get_gemini().generate_structured(
+                prompt=prompt, schema=list[_Act], system=FINDINGS_SYSTEM,
+                temperature=0.0, thinking_budget=0,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Findings pass failed: %s", exc)
+            return None
+        out: list[_Act] = []
+        for row in raw or []:
+            try:
+                out.append(_Act.model_validate(row))
+            except Exception:  # noqa: BLE001, S112
+                continue
+        return out
+
+    def _judge(
+        self, acts: list[_Act], items: list[ClearableItem]
+    ) -> dict[str, _Judgement] | None:
+        finding = "\n".join(
+            f"- {a.what}"
+            + (f" (by {a.who})" if a.who else "")
+            + "".join(f"\n    {i.role}: {i.entity}" for i in a.involves)
+            for a in acts
+        ) or "(no wrongdoing recorded)"
+
+        listing = "\n".join(f"- {it.value}  [{it.category.value}]" for it in items)
+        prompt = (
+            f"WHAT THE FILM SHOWS\n{'=' * 60}\n{finding}\n{'=' * 60}\n\n"
+            f"SUBJECTS TO JUDGE ({len(items)}):\n{listing}\n\n"
+            "Judge every subject listed against the finding above."
+        )
+        try:
+            raw = get_gemini().generate_structured(
+                prompt=prompt, schema=list[_Judgement], system=JUDGE_SYSTEM,
+                temperature=0.0, thinking_budget=0,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Depiction judgement failed: %s", exc)
+            return None
+        judged: dict[str, _Judgement] = {}
+        for row in raw or []:
+            try:
+                j = _Judgement.model_validate(row)
+            except Exception:  # noqa: BLE001, S112
+                continue
+            judged[_key(j.subject)] = j
+        return judged
+
 
 def _key(value: str) -> str:
-    import re
-
+    """Match subjects across steps despite casing and punctuation drift."""
     return re.sub(r"[^a-z0-9]+", "", value.lower())
