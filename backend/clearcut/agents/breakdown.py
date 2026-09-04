@@ -74,7 +74,7 @@ RULES:
 
 
 class _Extracted(BaseModel):
-    value: str = Field(description="Normalised subject, e.g. 'Zenith Motors'")
+    value: str = Field(description="Normalised subject, e.g. 'Halloran Freight'")
     category: str = Field(description="One of the listed category ids")
     quote: str = Field(description="Verbatim text from the scene")
     context: str = Field(default="", description="How it is used in the scene")

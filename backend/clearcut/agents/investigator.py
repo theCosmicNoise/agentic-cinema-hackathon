@@ -63,8 +63,8 @@ def web_search(objective: str, queries: list[str]) -> dict[str, Any]:
     Args:
         objective: What you need to establish, written as a question a
             researcher could answer. Frame it around the legal theory, not the
-            string. Good: "Is 'Zenith Motors' a live registered US trademark or
-            an actively operating business, and in what industry?"
+            string. Good: "Is 'Halloran Freight' a live registered US trademark
+            or an actively operating business, and in what industry?"
         queries: Two or three search queries likely to surface the answer.
             Quote exact names.
     """
@@ -110,7 +110,7 @@ def find_same_named_entities(objective: str, entity_type: str) -> dict[str, Any]
 
     Args:
         objective: What to enumerate, e.g. "operating US businesses trading as
-            'Meridian Auto Body'".
+            'Coastal Dental Group'".
         entity_type: Either "companies" or "people".
     """
     ev = _svc().search(

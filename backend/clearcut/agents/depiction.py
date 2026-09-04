@@ -58,6 +58,18 @@ List every wrongful act the script depicts: crime, fraud, forgery, conspiracy,
 violence, corruption, professional misconduct, negligence, or the producing and
 authenticating of falsified documents.
 
+An act has to be genuinely WRONGFUL. Ordinary conflict is not wrongdoing: being late,
+owing money, arguing, lying to a friend, drinking, or behaving badly are not acts for
+this purpose unless they are part of a crime or a professional breach. If you would not
+expect a lawyer to care, leave it out. Over-recording harmless behaviour puts innocent
+characters on a clearance report.
+
+Include acts that are DESCRIBED IN DIALOGUE or established by the plot, not only ones
+staged on screen. A scheme a character explains, or one the audience is shown the
+evidence of, is depicted just as surely as one performed in front of the camera. An
+ongoing operation ("buys salvage titles, doesn't ask questions") is an act. So is a
+pattern a character uncovers ("eleven cars, same adjuster, same doctor").
+
 For each act, record:
 - what happens, in one plain sentence
 - who does it, by character name
@@ -67,9 +79,12 @@ Roles:
   perpetrator  commits or directs the act
   instrument   its name, premises, domain, paperwork or staff are used to carry it out
   employer     a named company or institution the perpetrator is said to work for
-  venue        the named place the ACT ITSELF happens, including any street address
-               given for it
-  victim       harmed by it
+  venue        the named place the ACT ITSELF happens. Record BOTH the building or
+               business name AND any street address given for it, as separate
+               entries. "the old Harrow building on 400 Ninth" is two venues.
+  victim       harmed by it, without their name being attached to the wrongdoing
+  misused      their name, signature, credentials or likeness are forged, faked or
+               attached to the act without their involvement
   opposing     works against the wrongdoing: investigates it, exposes it, or refuses
                to take part
 
@@ -81,12 +96,16 @@ Record a character as "opposing" when the script has them uncovering or resistin
 act, and record their workplace as opposing too. Being the protagonist of a story about
 fraud is not taking part in fraud.
 
-Be exhaustive about named entities. If a character is introduced as working somewhere
-("Vandermeer at STATE FARM"), record that employer. If a document carries an
-institution's name, record that institution as instrument. If a summary line names
-roles rather than people ("same adjuster, same doctor, same signature"), resolve those
-roles to the characters who hold them earlier in the script and record their employers
-too.
+Be exhaustive about named entities. Every act usually touches several, and an entity
+you leave out is one that never gets reviewed. If a character is introduced as working somewhere
+("Ferris at NORTHWIND MUTUAL"), record that employer. If a document carries an
+institution's name, record that institution as instrument. RESOLVE ROLE REFERENCES. When a line names a role rather than a person ("the same
+adjuster", "the doctor", "whoever signed it"), work out which character holds that role
+earlier in the script and record THAT CHARACTER plus the employer they were introduced
+with. A script that establishes "Ferris at NORTHWIND MUTUAL" in one scene and refers to
+"the same adjuster" three scenes later has implicated both Ferris and Northwind Mutual,
+and this is the single most commonly missed connection because the two halves never
+appear in the same scene.
 
 Record only what the script actually depicts. Do not invent acts."""
 
@@ -113,11 +132,17 @@ Judge each subject against the finding. Do not re-read the plot; the finding is 
 film shows.
 
 Mark NEGATIVE when the finding places the subject in any of these roles:
-  perpetrator, instrument, employer, or venue.
+  perpetrator, instrument, employer, venue, or misused.
+
+"Misused" counts as negative even though the subject is wronged rather than at fault.
+The film puts their name on the fraud, and a real person or company of that name would
+object to being shown that way. Their innocence in the story does not remove the
+exposure.
 
 A subject recorded as "opposing" is NEUTRAL even if it appears elsewhere in the
 finding, because the film shows it resisting the wrongdoing rather than doing it. The
-same is true of anything recorded only as victim.
+same is true of anything recorded only as victim, where the subject is harmed but its
+name is not attached to the act.
 
 An entity is negative even when no character criticises it. An audience does not
 separate an employee's conduct from the employer whose name was attached to them, and

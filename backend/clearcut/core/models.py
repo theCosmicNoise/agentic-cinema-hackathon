@@ -80,7 +80,7 @@ class ClearableItem(BaseModel):
 
     id: str
     category: ClearanceCategory
-    value: str = Field(..., description="Normalised subject, e.g. 'Zenith Motors'")
+    value: str = Field(..., description="Normalised subject, e.g. 'Halloran Freight'")
     locations: list[ScriptLocation] = Field(default_factory=list)
     context: str | None = Field(
         None, description="How the item is used — drives depiction risk"
