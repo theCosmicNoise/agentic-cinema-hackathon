@@ -38,7 +38,7 @@ from typing import Callable
 
 from pydantic import BaseModel, Field
 
-from clearcut.core.naming import identity as _key
+from clearcut.core.naming import identity
 from clearcut.core.models import AgentEvent, ClearableItem
 from clearcut.core.screenplay import ParsedScreenplay
 from clearcut.services.gemini_client import get_gemini
@@ -228,7 +228,7 @@ class DepictionAgent:
         roles = self._roles(acts)
         changed = 0
         for it in items:
-            key = _key(it.value)
+            key = identity(it.value)
             role_verdict = _from_roles(roles.get(key))
             j = judged.get(key)
 
@@ -298,7 +298,7 @@ class DepictionAgent:
         out: dict[str, set[str]] = {}
         for a in acts:
             for inv in a.involves:
-                out.setdefault(_key(inv.entity), set()).add(inv.role.strip().lower())
+                out.setdefault(identity(inv.entity), set()).add(inv.role.strip().lower())
         return out
 
     def _judge(
@@ -331,7 +331,7 @@ class DepictionAgent:
                 j = _Judgement.model_validate(row)
             except Exception:  # noqa: BLE001, S112
                 continue
-            judged[_key(j.subject)] = j
+            judged[identity(j.subject)] = j
         return judged
 
 

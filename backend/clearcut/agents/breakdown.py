@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 
 from clearcut.agents.depiction import DepictionAgent
 from clearcut.core.coalesce import coalesce
-from clearcut.core.naming import merge_key as _normalise
+from clearcut.core.naming import merge_key
 from clearcut.core.models import (
     AgentEvent,
     ClearableItem,
@@ -188,7 +188,7 @@ class BreakdownAgent:
                 category = _coerce_category(ex.category)
                 if category is None:
                     continue
-                key = f"{category.value}::{_normalise(ex.value)}"
+                key = f"{category.value}::{merge_key(ex.value)}"
                 loc = ScriptLocation(
                     page=scene.start_page,
                     scene_number=scene.scene_number or str(scene.index),

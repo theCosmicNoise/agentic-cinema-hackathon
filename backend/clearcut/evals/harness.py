@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from clearcut.core.naming import tokens as _t, words as _norm
+from clearcut.core.naming import tokens, words
 from clearcut.core.models import ClearableItem, Verdict
 
 
@@ -41,7 +41,7 @@ def match_score(expected: str, found: str, exp_cat: str = "", got_cat: str = "")
     the real email onto the character's entry and reported two disagreements
     that were both artifacts of the matcher.
     """
-    e, f = _norm(expected), _norm(found)
+    e, f = words(expected), words(found)
     if not e or not f:
         return 0.0
 
@@ -53,7 +53,7 @@ def match_score(expected: str, found: str, exp_cat: str = "", got_cat: str = "")
         # better than a single shared word would.
         score = 60.0 + 20.0 * (min(len(e), len(f)) / max(len(e), len(f)))
     else:
-        te, tf = _t(expected, 4), _t(found, 4)
+        te, tf = tokens(expected, 4), tokens(found, 4)
         if not (te and tf):
             return 0.0
         overlap = len(te & tf) / len(te | tf)

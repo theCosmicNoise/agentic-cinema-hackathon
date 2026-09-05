@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import re
 
-from clearcut.core.naming import person_words as _norm, tokens as _tokens
+from clearcut.core.naming import person_words, tokens
 from clearcut.core.models import ClearableItem, ClearanceCategory
 
 # --------------------------------------------------------------------------- #
@@ -86,7 +86,7 @@ def coalesce(items: list[ClearableItem]) -> tuple[list[ClearableItem], list[str]
     # -- 1. drop generic roles ------------------------------------------- #
     kept: list[ClearableItem] = []
     for it in items:
-        if _norm(it.value) in _GENERIC:
+        if person_words(it.value) in _GENERIC:
             notes.append(f"dropped '{it.value}' — generic role, no clearance subject")
             continue
         kept.append(it)
@@ -94,7 +94,7 @@ def coalesce(items: list[ClearableItem]) -> tuple[list[ClearableItem], list[str]
     # -- 2. merge identical subjects across categories -------------------- #
     by_value: dict[str, list[ClearableItem]] = {}
     for it in kept:
-        by_value.setdefault(_norm(it.value), []).append(it)
+        by_value.setdefault(person_words(it.value), []).append(it)
 
     merged: list[ClearableItem] = []
     for group in by_value.values():
@@ -116,19 +116,19 @@ def coalesce(items: list[ClearableItem]) -> tuple[list[ClearableItem], list[str]
     # -- 3. absorb name fragments into their fullest form ----------------- #
     names = [i for i in merged if i.category in _NAME_LIKE]
     # Longest first, so "Desmond Hale" is the absorber and "Hale" the absorbed.
-    names.sort(key=lambda i: len(_tokens(i.value)), reverse=True)
+    names.sort(key=lambda i: len(tokens(i.value)), reverse=True)
 
     absorbed: set[str] = set()
     for i, full in enumerate(names):
         if full.id in absorbed:
             continue
-        full_tokens = _tokens(full.value)
+        full_tokens = tokens(full.value)
         if len(full_tokens) < 2:
             continue
         for frag in names[i + 1:]:
             if frag.id in absorbed:
                 continue
-            frag_tokens = _tokens(frag.value)
+            frag_tokens = tokens(frag.value)
             # A single-token name fully contained in a longer name is the same
             # person referred to by surname or first name alone.
             if len(frag_tokens) == 1 and frag_tokens < full_tokens:
