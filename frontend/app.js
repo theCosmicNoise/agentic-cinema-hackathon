@@ -83,13 +83,16 @@ function renderStart() {
 
   w.append(el('h1', null, 'Clear a screenplay'));
   const lede = el('p', 'lede');
-  lede.innerHTML = 'Before an Errors &amp; Omissions insurer will bind coverage, every production has to produce a <b>script clearance report</b>. No E&amp;O, no distribution. CLEARCUT runs that audit as a reviewed pipeline. Six agents do the work. You approve every step.';
+  lede.innerHTML = 'No carrier will bind E&amp;O without a <b>script clearance report</b>, and no distributor will take the picture without E&amp;O. The traditional route means weeks of waiting, and a fresh invoice every time the pages change. CLEARCUT runs the same audit against live sources, and nothing lands in the report until you have signed off on it.';
   w.append(lede);
 
   const ex = el('div', 'explain');
-  [['01','Upload a draft','Final Draft PDF, Fountain or plain text. Scene and page numbers come straight off the page.'],
-   ['02','Approve each step','Nothing moves without you. Dismiss false flags, overrule rulings, reject fixes you do not want.'],
-   ['03','Take the report','A page-cited PDF with sources under every ruling, plus a ledger so your next draft only re-checks what changed.']]
+  [['01','Send us the draft',
+    "Final Draft exports, Fountain files or plain text. We read your scene numbers and pagination off the page, so every finding tells you exactly where to look."],
+   ['02','Rule on it yourself',
+    "You are the adjudicator of record. Clear a false flag, overrule anything you disagree with, turn down a replacement you don't want."],
+   ['03','Hand it to your carrier',
+    "A page-cited report with the sources behind every ruling. When the pink pages arrive, only what actually changed gets checked again."]]
    .forEach(([n,h,p]) => {
      const c = el('div','ex'); c.append(el('div','n',n), el('h4',null,h), el('p',null,p)); ex.append(c);
    });
@@ -100,12 +103,12 @@ function renderStart() {
   /* upload */
   const up = el('div', 'panel');
   up.append(el('h3', null, 'Upload your screenplay'));
-  up.append(el('div', 'hint', 'PDF, .fountain or .txt, up to 25 MB. Your script stays on this deployment. It is parsed here, and only the flagged subjects are sent out for verification.'));
+  up.append(el('div', 'hint', "PDF, Fountain or plain text, up to 25 MB. Your script is read here and stays here. The only thing that ever leaves is a name we need to check, never a page of your screenplay."));
   const drop = el('label', 'drop');
   const inp = el('input'); inp.type = 'file'; inp.accept = '.pdf,.fountain,.txt';
   drop.append(inp,
     el('div', 'big', S.uploading ? 'Reading screenplay…' : 'Choose a file or drop it here'),
-    el('div', 'sm', 'Final Draft exports work as they are. Revision colour and draft date are picked up automatically.'));
+    el('div', 'sm', "Straight from Final Draft is fine. We'll pick up the revision colour and draft date ourselves."));
   inp.onchange = () => inp.files[0] && doUpload(inp.files[0]);
   ['dragenter','dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('over'); }));
   ['dragleave','drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('over'); }));
@@ -113,16 +116,16 @@ function renderStart() {
   up.append(drop);
   w.append(up);
 
-  w.append(el('div', 'orbar', 'or start from a sample'));
+  w.append(el('div', 'orbar', 'or try one of ours'));
 
   const pick = el('div', 'panel');
   pick.append(el('h3', null, 'Your scripts'));
-  pick.append(el('div', 'hint', 'Drafts of one picture share a clearance ledger, so each revision is measured against the draft before it.'));
+  pick.append(el('div', 'hint', 'Drafts of the same picture share one ledger, so every revision is checked against the draft before it rather than from scratch.'));
   const list = el('div');
   S.drafts.forEach(d => list.append(draftCard(d)));
   pick.append(list);
 
-  const go = el('button', 'btn wide', 'Open clearance session');
+  const go = el('button', 'btn wide', 'Start clearance');
   go.style.marginTop = '14px';
   go.disabled = !S.draft;
   go.onclick = openSession;
@@ -290,7 +293,12 @@ async function openSession() {
   } catch (e) { S.error = e.message; renderStart(); }
 }
 
-$('#newsess').onclick = () => { S.sess = null; S.view = null; S.trace = []; renderStart(); };
+function goHome() {
+  S.sess = null; S.view = null; S.trace = []; S.error = null;
+  renderStart();
+}
+$('#newsess').onclick = goHome;
+$('#home').onclick = goHome;
 
 /* ---------------- rail ---------------- */
 const stState = (id) => S.sess?.stages?.[id] || { status: 'pending' };

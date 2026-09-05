@@ -68,7 +68,13 @@ a { color: #1F5AA8; }
   background: var(--paper);
   border-bottom: 1px solid var(--line);
 }
-.wordmark { font-weight: 650; letter-spacing: .2em; font-size: 13px; }
+.wordmark {
+  font-weight: 650; letter-spacing: .2em; font-size: 13px;
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font-family: inherit; color: var(--ink);
+}
+.wordmark:hover span { color: var(--ink); }
+.wordmark:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 3px; }
 .wordmark span { color: var(--gold); }
 .tagline {
   color: var(--muted); font-size: 12px;
