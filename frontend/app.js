@@ -78,6 +78,9 @@ async function loadDrafts() {
 function renderStart() {
   $('#rail').hidden = true;
   $('#crumb').textContent = '';
+  // The tagline belongs on the way in, not over someone's shoulder while they
+  // work. Inside a session the header carries the script instead.
+  $('#tagline').hidden = false;
   const m = $('#main'); m.innerHTML = '';
   const w = el('div', 'start');
 
@@ -336,6 +339,7 @@ function renderRail() {
   const ov = dec.filter(d=>d.verdict_override).length; if (ov) row('Your overrides', ov);
   if (S.sess.carried?.length) row('From ledger', S.sess.carried.length);
 
+  $('#tagline').hidden = true;
   $('#crumb').innerHTML = `<b>${esc(sc.title)}</b>${sc.draft_label ? ' · ' + esc(sc.draft_label) + ' draft' : ''}`;
 }
 
