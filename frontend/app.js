@@ -18,14 +18,14 @@ const VCLASS = { must_change:'blocking', license_required:'licensed', legal_revi
    should be able to work the whole pipeline from these three lines. */
 const GUIDE = {
   breakdown: {
-    what: 'Reads every page and marks each element that carries legal exposure: character and company names, brands, addresses, phone numbers, plates, domains, songs, artwork, clips, and references to real people.',
-    why:  'Whatever is missed here stays invisible for the rest of the process. One uncleared element can hold up your <b>E&O policy</b>, and no distributor will release a picture without one.',
-    you:  'Read the list and dismiss anything that is not really a clearance subject. The agent flags generously on purpose. Missing an item is far more expensive than reading a few extra.',
+    what: "We read the script end to end and mark everything a clearance house would pull: character and company names, brands, addresses, phone numbers, licence plates, domains, songs, artwork, clips, and any real person you've named.",
+    why:  "Anything we miss here never comes up again. It reaches your carrier uncleared, and a single uncleared item is enough to hold up the <b>E&O policy</b> your distributor is waiting on.",
+    you:  "Work down the list and knock out anything that isn't really a clearance subject. We flag generously on purpose. Reading a few extra costs you a minute; missing one costs you the delivery date.",
   },
   triage: {
-    what: 'Splits the list in two: items an industry rule already settles, and items that need checking against live sources.',
-    why:  'Rules are exact and cost nothing. Nobody researches whether 555-0142 belongs to someone, because that block is reserved for fiction. Spending lookups only where evidence changes the answer is what keeps a feature-length script affordable.',
-    you:  'Look at what is queued before it runs. Each question is framed around the legal test for that kind of item, not just the words on the page.',
+    what: "We split the list in two: what an industry rule already answers, and what has to be checked against live sources.",
+    why:  "Rules are exact and they're free. Nobody looks up whether 555-0142 belongs to anyone, because that whole block is reserved for fiction. Paying for lookups only where the evidence actually changes the answer is what makes a full-length script affordable to clear.",
+    you:  "Have a look at what's queued before it runs. Each question is built around the legal test for that kind of item, not just the words on the page.",
   },
   research: {
     what: 'Checks each remaining subject against live sources through Parallel and brings back citations you can open.',
@@ -308,7 +308,7 @@ function renderRail() {
   const box = $('#steps'); box.innerHTML = '';
   S.stages.forEach((st, i) => {
     const s = stState(st.id), open = unlocked(i);
-    let cls = '', label = 'Locked until the step above is approved';
+    let cls = '', label = 'Unlocks when you approve the step above';
     if (open) {
       if (s.status === 'approved') { cls='done'; label='Approved'; }
       else if (s.status === 'awaiting_review') { cls='review'; label='Needs your review'; }
@@ -401,7 +401,7 @@ function runPrompt(meta) {
   if (meta.id === 'research') wrap.append(enginePicker());
 
   const box = el('div','gate');
-  box.append(el('div','ask', S.running ? 'Working…' : 'Nothing has run for this step yet.'));
+  box.append(el('div','ask', S.running ? 'Working on it…' : "This step hasn't run yet."));
   const b = el('button','btn', S.running ? 'Working…' : `Run ${meta.name.toLowerCase()}`);
   b.disabled = S.running;
   b.onclick = () => runStage(meta.id, meta.id === 'research' ? S.deep : false);
@@ -502,9 +502,9 @@ function bodyFor(stage) {
     const notes = S.sess.triage_notes || {};
     const ruled = items.filter(i => (notes[i.id]||'').startsWith('rule ·'));
     const res = items.filter(i => notes[i.id] && !notes[i.id].startsWith('rule ·'));
-    if (ruled.length) { w.append(gbar(`Settled by rule (${ruled.length}), no lookup spent`)); ruled.forEach(i => w.append(card(i,{triage:true}))); }
-    if (res.length) { w.append(gbar(`Queued for live verification (${res.length})`)); res.forEach(i => w.append(card(i,{triage:true}))); }
-    if (!ruled.length && !res.length) w.append(msg('Every subject carried forward from your ledger. Nothing in this draft needs re-checking.'));
+    if (ruled.length) { w.append(gbar(`Settled by rule (${ruled.length}), nothing spent`)); ruled.forEach(i => w.append(card(i,{triage:true}))); }
+    if (res.length) { w.append(gbar(`Going out for checking (${res.length})`)); res.forEach(i => w.append(card(i,{triage:true}))); }
+    if (!ruled.length && !res.length) w.append(msg("Everything here carried over from your ledger, so there's nothing in this draft to check again."));
   }
 
   else if (stage === 'research') {
@@ -692,7 +692,7 @@ function card(it, mode) {
     const t = S.sess.triage_notes?.[it.id] || '';
     c.append(t.startsWith('rule ·')
       ? el('div','why',`Settled by rule: ${t.replace('rule · ','')}. No lookup needed.`)
-      : el('div','obj',`Will ask: ${t.slice(0,300)}`));
+      : el('div','obj',`We'll ask: ${t.slice(0,300)}`));
   }
 
   if ((mode.evidence || mode.verdict) && ev) {
@@ -733,7 +733,7 @@ function card(it, mode) {
 
   const acts = el('div','acts');
   if (mode.dismiss) {
-    acts.append(el('span','prompt','Is this a real clearance subject?'));
+    acts.append(el('span','prompt','Is this really a clearance subject?'));
     const b = el('button','act danger'+(d.dismissed?' on':''), d.dismissed?'Dismissed, click to restore':'Not a clearance subject');
     b.onclick = () => decide(it.id,{ dismissed: !d.dismissed });
     acts.append(b);

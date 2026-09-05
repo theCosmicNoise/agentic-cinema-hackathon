@@ -80,8 +80,8 @@ STAGE_ORDER = [
 ]
 
 STAGE_BLURB = {
-    Stage.BREAKDOWN: "Read the screenplay and flag every element carrying legal exposure.",
-    Stage.TRIAGE: "Settle what a rule already answers, and plan a question for the rest.",
+    Stage.BREAKDOWN: "Read the script and flag everything that carries legal exposure.",
+    Stage.TRIAGE: "Settle what a rule already answers, and write a question for the rest.",
     Stage.RESEARCH: "Verify each subject against the live web and collect citations.",
     Stage.ADJUDICATE: "Rule on the evidence, using the test that governs each kind of item.",
     Stage.SUBSTITUTE: "Propose replacements for blocked items, then re-check the replacements.",
@@ -89,8 +89,8 @@ STAGE_BLURB = {
 }
 
 STAGE_GATE = {
-    Stage.BREAKDOWN: "Dismiss anything that is not a clearance subject, then approve the flag list.",
-    Stage.TRIAGE: "Check what is queued before it spends live lookups.",
+    Stage.BREAKDOWN: "Knock out anything that isn't a clearance subject, then approve the list.",
+    Stage.TRIAGE: "Check what's queued before we spend live lookups on it.",
     Stage.RESEARCH: "Open the sources and check they are on point.",
     Stage.ADJUDICATE: "Accept each ruling or overrule it. Your decision is what the report prints.",
     Stage.SUBSTITUTE: "Accept or reject each proposed replacement.",
