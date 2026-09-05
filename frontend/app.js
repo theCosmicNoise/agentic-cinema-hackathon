@@ -147,7 +147,12 @@ function draftCard(d) {
   const bits = [d.draft && `${d.draft} draft`, d.date, `${d.pages} page${d.pages === 1 ? '' : 's'}`, d.original_name].filter(Boolean);
   body.append(el('div', 'm', bits.join(' · ')));
   row.append(sw, body);
-  row.append(el('span', 'chip', d.sample ? 'Sample' : 'Uploaded'));
+
+  // Chip and remove control share one trailing group. Previously the chip
+  // claimed the free space with margin-left:auto and the button was appended
+  // after it, so the two overlapped.
+  const tail = el('div', 'dtail');
+  tail.append(el('span', 'chip', d.sample ? 'Sample' : 'Uploaded'));
 
   const pick = () => { S.draft = d.id; renderStart(); };
   row.onclick = pick;
@@ -159,8 +164,9 @@ function draftCard(d) {
     x.title = `Remove ${d.title || d.id}`;
     x.setAttribute('aria-label', `Remove ${d.title || d.id}`);
     x.onclick = (e) => { e.stopPropagation(); confirmRemove(d); };
-    row.append(x);
+    tail.append(x);
   }
+  row.append(tail);
   return row;
 }
 
@@ -237,7 +243,7 @@ function historyRow(h) {
   if (h.report_id) {
     const pdf = el('a','act', 'Report');
     pdf.href = `/api/sessions/${h.id}/report.pdf`;
-    pdf.target = '_blank'; pdf.style.textDecoration = 'none';
+    pdf.target = '_blank';
     acts.append(pdf);
   }
 
@@ -562,6 +568,16 @@ function bodyFor(stage) {
 /* ---------------- buckets ----------------
    Seventeen categories is the right vocabulary for the legal theory and the
    wrong one for the person reviewing. Group by who has to act. */
+function scrollToBucket(id, afterRender) {
+  const go = () => {
+    const node = document.getElementById(`bucket-${id}`);
+    if (node) node.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  // Two frames when the DOM was just replaced, so layout has settled first.
+  if (afterRender) requestAnimationFrame(() => requestAnimationFrame(go));
+  else go();
+}
+
 function bucketOf(cat) {
   const b = S.buckets.find(x => (x.categories || []).includes(cat));
   return b ? b.id : 'other';
@@ -585,13 +601,38 @@ function grouped(items, mode, count) {
   const groups = byBucket(items);
   if (!groups.length) return wrap;
 
+  // A 200-item script is unreadable without a fixed handle on it, so the
+  // toolbar sticks and carries jump links. Scrolling back to the top to reach
+  // another section is the thing that makes a long list feel unusable.
   const bar = el('div', 'bulk');
-  bar.append(el('span', null, `${items.length} in ${groups.length} groups`));
-  const ea = el('button', 'link', 'Expand all');
+
+  const left = el('div', 'bleft');
+  left.append(el('span', 'btotal', `${items.length} items`));
+  left.append(el('span', 'bsep'));
+  groups.forEach(([b, list]) => {
+    const jump = el('button', 'bjump');
+    jump.append(document.createTextNode(b.name), el('span', 'bjn', String(list.length)));
+    jump.title = `Jump to ${b.name}`;
+    jump.onclick = () => {
+      // Only re-render when opening actually changes something. Rebuilding the
+      // list and scrolling in the same frame raced: the scroll ran against the
+      // old layout and landed nowhere.
+      const needsRender = !S.open[b.id];
+      S.open[b.id] = true;
+      if (needsRender) renderAll();
+      scrollToBucket(b.id, needsRender);
+    };
+    left.append(jump);
+  });
+  bar.append(left);
+
+  const right = el('div', 'bright');
+  const ea = el('button', 'act', 'Expand all');
   ea.onclick = () => { groups.forEach(([b]) => S.open[b.id] = true); renderAll(); };
-  const ca = el('button', 'link', 'Collapse all');
+  const ca = el('button', 'act', 'Collapse all');
   ca.onclick = () => { groups.forEach(([b]) => S.open[b.id] = false); renderAll(); };
-  bar.append(ea, ca);
+  right.append(ea, ca);
+  bar.append(right);
   wrap.append(bar);
 
   groups.forEach(([b, list]) => {
@@ -600,6 +641,7 @@ function grouped(items, mode, count) {
     const openNow = !!S.open[b.id];
 
     const sec = el('div', 'bucket' + (openNow ? ' open' : ''));
+    sec.id = `bucket-${b.id}`;
     const head = el('button', 'bhead');
     head.append(el('span', 'caret', openNow ? '▾' : '▸'));
     head.append(el('span', 'bname', b.name));

@@ -177,8 +177,12 @@ button, select { font-family: inherit; }
   width: 10px; height: 10px; border-radius: 2px; flex: 0 0 auto;
   border: 1px solid rgba(0,0,0,.18);
 }
+.dtail {
+  margin-left: auto; display: flex; align-items: center; gap: 8px;
+  flex: 0 0 auto;
+}
 .chip {
-  margin-left: auto; font-size: 10px; letter-spacing: .07em;
+  font-size: 10px; letter-spacing: .07em;
   text-transform: uppercase; color: var(--faint);
   border: 1px solid var(--line); border-radius: 10px; padding: 2px 8px;
 }
@@ -332,12 +336,14 @@ button, select { font-family: inherit; }
 .acts { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center;
         padding-top: 11px; border-top: 1px solid var(--line-2); }
 .acts .prompt { font-size: 11.5px; color: var(--faint); margin-right: 2px; }
-button.act {
+.act, button.act {
   background: var(--paper); border: 1px solid var(--line);
   color: var(--ink-2); border-radius: 6px;
   padding: 5px 12px; font-size: 12px; cursor: pointer; font-weight: 500;
+  font-family: inherit; line-height: 1.5; text-decoration: none;
+  display: inline-block; white-space: nowrap;
 }
-button.act:hover { background: var(--sunken); border-color: #CFCBBF; }
+.act:hover, button.act:hover { background: var(--sunken); border-color: #CFCBBF; }
 button.act.on { font-weight: 650; }
 button.act.good.on { background: var(--clear); border-color: var(--clear); color: #fff; }
 button.act.danger.on { background: var(--must); border-color: var(--must); color: #fff; }
@@ -424,31 +430,19 @@ select.override {
   .detail { padding: 20px 18px 80px; }
 }
 
-/* remove control on uploaded scripts */
-.draft { position: relative; }
+/* Remove control on uploaded scripts. Samples have none, they are fixtures.
+   It lives in .dtail beside the chip rather than being positioned over it. */
 .draft .remove {
   background: transparent; border: 1px solid transparent;
   color: var(--faint); border-radius: 6px;
   width: 26px; height: 26px; line-height: 1;
   font-size: 17px; cursor: pointer; flex: 0 0 auto;
-  margin-left: 6px; opacity: 0; transition: opacity .12s, color .12s, border-color .12s;
+  opacity: 0; transition: opacity .12s, color .12s, border-color .12s;
 }
 .draft:hover .remove, .draft:focus-within .remove { opacity: 1; }
 .draft .remove:hover { color: var(--must); border-color: #F0CFCC; background: var(--must-bg); }
 .draft .remove:focus-visible { opacity: 1; outline: 2px solid var(--must); outline-offset: 1px; }
 
-/* Remove control on uploaded scripts. Samples have none — they are fixtures. */
-.draft { position: relative; }
-.draft .remove {
-  position: absolute; top: 8px; right: 8px;
-  width: 22px; height: 22px; line-height: 1;
-  border: 1px solid transparent; border-radius: 5px;
-  background: transparent; color: var(--faint);
-  font-size: 16px; cursor: pointer; opacity: 0;
-  transition: opacity .12s, background .12s, color .12s;
-}
-.draft:hover .remove, .draft .remove:focus-visible { opacity: 1; }
-.draft .remove:hover { background: var(--must-bg); color: var(--must); border-color: #F0CFCC; }
 
 /* ---------------- research engine picker ---------------- */
 .engine { margin-bottom: 18px; }
@@ -472,9 +466,39 @@ select.override {
 
 /* ---------------- buckets ---------------- */
 .bulk {
+  position: sticky; top: 0; z-index: 20;
   display: flex; align-items: center; gap: 14px;
-  font-size: 12px; color: var(--muted); margin-bottom: 12px;
+  margin: 0 -30px 14px; padding: 10px 30px;
+  background: rgba(247,246,243,.94);
+  backdrop-filter: saturate(180%) blur(8px);
+  -webkit-backdrop-filter: saturate(180%) blur(8px);
+  border-bottom: 1px solid var(--line);
+  font-size: 12px; color: var(--muted);
 }
+.bleft {
+  display: flex; align-items: center; gap: 6px;
+  flex: 1; min-width: 0; overflow-x: auto;
+  scrollbar-width: none;
+}
+.bleft::-webkit-scrollbar { display: none; }
+.btotal { font-weight: 650; color: var(--ink); white-space: nowrap; }
+.bsep { width: 1px; height: 16px; background: var(--line); flex: 0 0 auto; margin: 0 4px; }
+
+button.bjump {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--paper); border: 1px solid var(--line);
+  border-radius: 20px; padding: 4px 10px 4px 12px;
+  font: inherit; font-size: 12px; color: var(--ink-2);
+  cursor: pointer; white-space: nowrap; flex: 0 0 auto;
+}
+button.bjump:hover { background: var(--sunken); border-color: #CFCBBF; color: var(--ink); }
+.bjn {
+  font-size: 10.5px; font-variant-numeric: tabular-nums;
+  background: var(--sunken); border-radius: 9px; padding: 1px 6px; color: var(--muted);
+}
+button.bjump:hover .bjn { background: var(--paper); }
+
+.bright { display: flex; gap: 6px; flex: 0 0 auto; }
 button.link {
   background: none; border: 0; padding: 0; cursor: pointer;
   font: inherit; font-size: 12px; color: #1F5AA8; text-decoration: underline;
@@ -482,6 +506,7 @@ button.link {
 button.link:hover { color: #143E75; }
 
 .bucket {
+  scroll-margin-top: 58px;
   border: 1px solid var(--line); border-radius: var(--r);
   background: var(--paper); margin-bottom: 10px; overflow: hidden;
 }
