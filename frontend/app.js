@@ -28,24 +28,24 @@ const GUIDE = {
     you:  "Have a look at what's queued before it runs. Each question is built around the legal test for that kind of item, not just the words on the page.",
   },
   research: {
-    what: 'Checks each remaining subject against live sources through Parallel and brings back citations you can open.',
-    why:  'Your insurer relies on these rulings, so each one has to trace back to something real. A model cannot produce a USPTO registration number from memory. Only a lookup can.',
-    you:  'Open a few sources and check they are on point. If a subject came back thin, better to know that now than after the ruling.',
+    what: "We check every remaining subject against live sources and bring back the citations, so you can open them and read what we read.",
+    why:  "Your carrier is relying on these rulings, so each one has to trace back to something real. No model can produce a USPTO registration number from memory. Only a lookup can do that.",
+    you:  "Open a few of the sources and see whether they're on point. If something came back thin, you want to know now rather than after it's been ruled on.",
   },
   adjudicate: {
-    what: 'Rules on each subject using the test that governs its category: tarnishment, defamation, public domain, sync and master rights, or whether a real referent exists.',
-    why:  'Two things create exposure: a real referent, <b>and how your script treats it</b>. A real company mentioned in passing is usually fine. The same company shown committing fraud is not.',
-    you:  'You are the adjudicator of record. Accept a ruling or overrule it. What you decide is what the report prints, and the report is what your carrier reads.',
+    what: "We rule on each subject using the test that governs it: tarnishment, defamation, public domain, sync and master rights, or simply whether anything real answers to that name.",
+    why:  "Exposure takes two things: something real behind the name, <b>and the way your script treats it</b>. A real company mentioned in passing is usually fine. The same company shown committing fraud is not.",
+    you:  "You're the adjudicator of record here. Take a ruling or overrule it. What you decide is what gets printed, and what gets printed is what your carrier reads.",
   },
   substitute: {
-    what: 'Takes everything you marked must-change, proposes a replacement, then puts that replacement through the same research and ruling the original just failed.',
-    why:  'A clearance house tells you no. It rarely tells you what to use instead, because vetting a replacement is another billable pass. So productions guess, and the next draft arrives with new problems.',
-    you:  'Accept or reject each proposal. Rejected ones stay out of the report. Replacements are built to keep the register, period and syllable count so dialogue still reads.',
+    what: "For everything you marked must-change, we propose a replacement and then put that replacement through the same checks the original just failed.",
+    why:  "A clearance house will tell you no. It won't usually tell you what to use instead, because vetting a replacement is another pass and another invoice. So productions guess, and the next draft turns up carrying a fresh set of problems.",
+    you:  "Take or leave each suggestion. Anything you turn down stays out of the report. Replacements are built to hold the same register, period and syllable count, so the line still plays.",
   },
   report: {
-    what: 'Builds the page-cited clearance report, with sources under every ruling and any replacement you accepted written in.',
-    why:  'This is the document your E&O carrier asks for before binding coverage, and what production counsel signs against.',
-    you:  'Check the tally, then generate the PDF. Approving it writes these rulings into your clearance ledger, so the next draft only re-checks what actually changed.',
+    what: "We assemble the report: every finding cited to its page, the sources under each ruling, and any replacement you accepted written in.",
+    why:  "This is the document your carrier asks for before binding E&O, and the one production counsel signs against.",
+    you:  "Check the tally and generate the PDF. Approving it writes these rulings into your ledger, so when the next draft lands only what actually changed gets checked again.",
   },
 };
 
@@ -509,7 +509,7 @@ function bodyFor(stage) {
 
   else if (stage === 'research') {
     const got = items.filter(i => S.sess.evidence?.[i.id]);
-    if (!got.length) w.append(msg('No new verification was required for this draft.'));
+    if (!got.length) w.append(msg("Nothing in this draft needed checking against live sources."));
     else w.append(grouped(got, { evidence:true }, list => {
       const src = list.reduce((n,i) => n + (S.sess.evidence?.[i.id]?.citations?.length || 0), 0);
       return `${list.length} · ${src} sources`;
@@ -548,7 +548,7 @@ function bodyFor(stage) {
 
   else if (stage === 'substitute') {
     const t = items.filter(i => !dec(i.id).dismissed && eff(i.id) === 'must_change');
-    if (!t.length) w.append(msg('Nothing is marked must-change, so there is nothing to replace.'));
+    if (!t.length) w.append(msg("Nothing is marked must-change, so there's nothing here to replace."));
     t.forEach(i => w.append(card(i,{sub:true})));
   }
 
@@ -560,8 +560,8 @@ function bodyFor(stage) {
     VERDICTS.forEach(([k,l]) => { const c = el('div', k==='must_change'?'must':k); c.append(el('b',null,String(counts[k]||0)), el('span',null,l)); t.append(c); });
     w.append(t);
     w.append(msg(blocking
-      ? `${blocking} item${blocking===1?'':'s'} must be resolved before an E&O policy can bind on this draft.`
-      : 'No blocking items. This draft is clear for E&O submission.'));
+      ? `${blocking} item${blocking===1?'':'s'} to settle before a carrier will bind E&O on this draft.`
+      : "Nothing blocking. This draft is ready to go to your carrier."));
     if (S.sess.report_id) {
       const a = el('a','btn gold',`Download ${S.sess.report_id}.pdf`);
       a.href = `/api/sessions/${S.sess.id}/report.pdf`; a.target = '_blank';
@@ -696,7 +696,7 @@ function card(it, mode) {
   }
 
   if ((mode.evidence || mode.verdict) && ev) {
-    if (mode.evidence) c.append(el('div','obj',`Objective: ${ev.objective.slice(0,260)}`));
+    if (mode.evidence) c.append(el('div','obj',`What we asked: ${ev.objective.slice(0,260)}`));
     if (ev.citations?.length) {
       const s = el('div','srcs');
       ev.citations.slice(0, mode.evidence?6:3).forEach(ct => {
@@ -718,15 +718,15 @@ function card(it, mode) {
     if (sub?.verified_clear) {
       const f = el('div','fixbox');
       f.append(el('b',null,`Proposed: ${sub.proposed}`), document.createTextNode(`, re-checked and verified in ${sub.attempts} attempt${sub.attempts===1?'':'s'}`));
-      if (sub.rejected_candidates?.length) f.append(el('div','rej',`Rejected on the way: ${sub.rejected_candidates.join(', ')}`));
+      if (sub.rejected_candidates?.length) f.append(el('div','rej',`Ruled out first: ${sub.rejected_candidates.join(', ')}`));
       c.append(f);
     } else if (sub?.rejected_candidates?.length) {
       const f = el('div','fixbox none');
-      f.append(el('b',null,'No candidate verified clear.'), el('div','rej',`Tried: ${sub.rejected_candidates.join(', ')}`));
+      f.append(el('b',null,"Nothing we tried came back clear."), el('div','rej',`Tried: ${sub.rejected_candidates.join(', ')}`));
       c.append(f);
     } else if (sub) {
       const f = el('div','fixbox none');
-      f.append(el('b',null,'No replacement proposed.'), el('div','rej','This revision is the production’s call.'));
+      f.append(el('b',null,'No replacement to offer.'), el('div','rej','This one is your call.'));
       c.append(f);
     }
   }
@@ -739,7 +739,7 @@ function card(it, mode) {
     acts.append(b);
   }
   if (mode.verdict) {
-    acts.append(el('span','prompt','Your ruling:'));
+    acts.append(el('span','prompt','Your call:'));
     const keep = el('button','act good'+(!d.verdict_override?' on':''),'Accept');
     keep.onclick = () => decide(it.id,{ verdict_override:'' });
     acts.append(keep);
@@ -750,10 +750,10 @@ function card(it, mode) {
     acts.append(sel);
   }
   if (mode.sub && sub) {
-    acts.append(el('span','prompt','Use this replacement?'));
-    const y = el('button','act good'+(d.substitution_accepted===true?' on':''),'Accept fix');
+    acts.append(el('span','prompt','Use this one?'));
+    const y = el('button','act good'+(d.substitution_accepted===true?' on':''),'Use it');
     y.onclick = () => decide(it.id,{ substitution_accepted:true });
-    const n = el('button','act danger'+(d.substitution_accepted===false?' on':''),'Reject fix');
+    const n = el('button','act danger'+(d.substitution_accepted===false?' on':''),'Leave it');
     n.onclick = () => decide(it.id,{ substitution_accepted:false });
     acts.append(y,n);
   }
