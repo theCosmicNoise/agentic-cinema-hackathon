@@ -62,6 +62,13 @@ MARK these categories:
 - location_name: named real venues
 - depiction_risk: any entity shown committing crime, fraud or misconduct
 
+THE SCENE HEADING IS CONTENT. A slug line like "INT. HALLORAN FREIGHT - LOADING BAY -
+NIGHT" names a business that will be built, dressed and shown on camera, and it is a
+clearance subject exactly as if it were spoken in dialogue. Mark named businesses,
+venues, buildings and streets that appear ONLY in the heading. This is the most
+commonly missed case, because the heading reads as a stage direction rather than
+content.
+
 RULES:
 - Quote the text VERBATIM as it appears. Never paraphrase the quote.
 - One entry per distinct subject. If a name appears three times in the scene, return it once.
