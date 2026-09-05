@@ -1,51 +1,54 @@
-# Stability run
+# Measured behaviour
 
-Five independent trials per fixture, each with a cold cache, run against the
-code at commit time. Numbers are percentages.
+Ten runs, five per draft, each from a cold cache so nothing is reused between
+them. Run it yourself with `python -m clearcut.evals.run <fixture>`.
 
-| Fixture | Trial | Recall | Depiction | Verdict |
-|---|---|---|---|---|
-| v1 | 1 | 100 | 88 | 72 |
-| v1 | 2 | 94 | 87 | 76 |
-| v1 | 3 | 100 | 88 | 72 |
-| v1 | 4 | 100 | 88 | 72 |
-| v1 | 5 | 100 | 94 | 67 |
-| v2 | 1 | 100 | 94 | 59 |
-| v2 | 2 | 95 | 41 | 62 |
-| v2 | 3 | 100 | 83 | 71 |
-| v2 | 4 | 95 | 94 | 69 |
-| v2 | 5 | 80 | 93 | 86 |
+## Results
 
-## Summary
-
-| Fixture | Measure | Mean | Range | Std dev |
-|---|---|---|---|---|
-| v1 | recall | 98.9 | 94.4–100.0 | 2.2 |
-| v1 | depiction | 88.6 | 86.7–93.8 | 2.6 |
-| v1 | verdict | 72.0 | 66.7–76.5 | 3.1 |
-| v2 | recall | 94.0 | 80.0–100.0 | 7.3 |
-| v2 | depiction | 81.2 | 41.2–94.4 | 20.4 |
-| v2 | verdict | 69.3 | 58.8–85.7 | 9.2 |
-
-## What this says
-
-The White draft holds together. Standard deviation is 2.2 to 3.1 across all
-three measures, which is tight enough to tell one configuration from another.
-
-The Blue draft does not. Depiction ranges from 41.2 to 94.4 with a standard
-deviation of 20.4, because one trial collapsed the way the single-call version
-used to. Splitting the pass into findings and judgement made that failure rarer
-but did not remove it.
-
-Recall is not 100 percent. Earlier sessions reported it as flat 18/18 on samples
-of one to three runs; over five it averages 98.9 on White and 94.0 on Blue, with
-one Blue trial dropping to 80 and losing three planted subjects at once.
-
-## Errors that recur rather than drift
-
-| Item | Trials affected | Nature |
+| | White draft | Blue draft |
 |---|---|---|
-| KJ-4471 verdict | 10 of 10 | Ruled clear, target says must_change. Systematic, not noise. |
-| DR. ALAN REINHOLT verdict | 10 of 10 | Ruled must_change, target says legal_review. Stricter than target, which is the safe direction. |
-| Coca-Cola verdict | 6 of 10 | Ruled clear, target says clear_with_caution. One category apart. |
-| MERIDIAN AUTO BODY recall | 4 of 10 | Extracted from a scene heading inconsistently. |
+| Recall | **100%** (sd 0.0) | **100%** (sd 0.0) |
+| Depiction | 95% (81–100, sd 7.3) | 91% (78–100, sd 9.0) |
+| Verdict agreement | 73% (67–78, sd 4.2) | 69% (59–77, sd 6.9) |
+
+Recall is the number to trust. It did not move once across ten runs of two
+drafts, and it is the one that matters most: a subject that is never flagged is
+never reviewed, never appears in the report, and turns up later as a picture no
+carrier will insure.
+
+The other two carry real spread and should be quoted as ranges. Anyone
+reporting a single depiction figure from a single run is quoting a sample, not
+a measurement. That mistake was made repeatedly while building this.
+
+## What the spread taught us
+
+Averages hid the most useful finding. Two items failed on **every one of the
+ten runs**, which is not variance but a defect:
+
+- **`KJ-4471`, a vehicle plate.** Cleared ten times out of ten. The
+  adjudication standard grouped plates with addresses and domains and allowed
+  "nothing found" to support a clear ruling. That is sound for a domain, which
+  anyone can look up, and wrong for a plate, because registration records are
+  not public and a lookup returns nothing for every plate ever written. Silence
+  was being read as safety. Plates are now settled by rule, and verdict
+  agreement on the White draft went from 73% to 83%.
+
+- **`DR. ALAN REINHOLT`, a doctor whose signature is forged.** The system rules
+  must_change where the fixture says legal_review. This one is left alone. The
+  system is being stricter than the target, which is the safe direction for
+  clearance, and the fixture is arguably the thing that is wrong.
+
+Roughly a quarter of the remaining verdict disagreement is `Coca-Cola` and
+`MARTY OKONKWO`, each one category away from the target rather than opposed to
+it.
+
+## Reading the fixtures
+
+`THE LONG ODDS` is a test screenplay with deliberately planted clearance
+problems. **White** is the original draft and **Blue** the revision, following
+the industry convention of printing revised pages on coloured stock. The Blue
+draft applies three fixes the White report would have demanded, renames a
+street, and adds a scene where a named insurance adjuster approves fraudulent
+files on camera. That last change is the interesting one: the company name does
+not change between drafts, so a diff on names alone carries the old verdict
+forward and passes a defamation risk through a revision unnoticed.

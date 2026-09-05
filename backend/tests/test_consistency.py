@@ -111,3 +111,26 @@ def test_domain_extraction():
     assert _domain_of("midwestsalvageauth.com") == "midwestsalvageauth.com"
     assert _domain_of("not a domain") is None
     assert _domain_of("Zenith Motors") is None
+
+
+# --------------------------------------------------------------------------- #
+# Licence plates
+# --------------------------------------------------------------------------- #
+def test_plate_is_never_cleared_by_absence_of_evidence():
+    """Ten runs out of ten cleared a plate because no search can ever find one.
+
+    Registration records are not public, so a lookup returns nothing for every
+    plate, invented or issued. Silence is not evidence, and this is settled by
+    rule rather than research.
+    """
+    from clearcut.core.rules import RESEARCH_REQUIRED, apply_deterministic_rule
+
+    for plate in ("KJ-4471", "4KJ-882", "ABC 1234", "7XYZ123"):
+        outcome = apply_deterministic_rule(ClearanceCategory.LICENSE_PLATE, plate)
+        assert outcome is not None, f"{plate} fell through to research"
+        assert outcome.verdict is Verdict.MUST_CHANGE
+        assert outcome.rule_id == "PLATE_NOT_SEARCHABLE"
+
+    assert ClearanceCategory.LICENSE_PLATE not in RESEARCH_REQUIRED, (
+        "a plate lookup always comes back empty, so it must not spend one"
+    )

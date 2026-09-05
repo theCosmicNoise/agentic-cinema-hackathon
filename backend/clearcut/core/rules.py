@@ -86,9 +86,39 @@ def check_film_clip(value: str) -> RuleOutcome:
 # --------------------------------------------------------------------------- #
 # Registry — which categories are decided by rule, which need evidence
 # --------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------- #
+# Vehicle registration plates
+# --------------------------------------------------------------------------- #
+# A plate is the one category where searching is not merely unhelpful but
+# actively misleading. DMV registration data is not public, so a lookup returns
+# nothing for every plate ever written, real or invented. Treating that silence
+# as evidence of safety clears the item every time, which is exactly what
+# happened here: this plate was ruled clear in ten runs out of ten.
+#
+# The industry does not clear plates by searching either. A picture car either
+# carries a plate obtained through the state film office, one from a range the
+# state does not issue, or one added in post. So the ruling belongs to a rule,
+# and the rule is that a plate written into a script has not been cleared by
+# anyone yet.
+def check_license_plate(value: str) -> RuleOutcome:
+    return RuleOutcome(
+        verdict=Verdict.MUST_CHANGE,
+        risk=RiskLevel.MEDIUM,
+        rationale=(
+            f"'{value}' cannot be cleared by research. Vehicle registration records "
+            f"are not publicly searchable, so finding nothing tells you nothing about "
+            f"whether the plate is issued. Obtain a plate through the state film "
+            f"office, use a number from a range the state does not issue, or add it "
+            f"in post."
+        ),
+        rule_id="PLATE_NOT_SEARCHABLE",
+    )
+
+
 _DETERMINISTIC = {
     ClearanceCategory.PHONE_NUMBER: check_phone,
     ClearanceCategory.FILM_TV_CLIP: check_film_clip,
+    ClearanceCategory.LICENSE_PLATE: check_license_plate,
 }
 
 # Categories where a live lookup is the whole point.
@@ -97,7 +127,6 @@ RESEARCH_REQUIRED = {
     ClearanceCategory.BUSINESS_NAME,
     ClearanceCategory.BRAND_PRODUCT,
     ClearanceCategory.ADDRESS,
-    ClearanceCategory.LICENSE_PLATE,
     ClearanceCategory.URL_DOMAIN,
     ClearanceCategory.EMAIL,
     ClearanceCategory.MUSIC_CUE,

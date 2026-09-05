@@ -79,9 +79,10 @@ CATEGORY STANDARDS
 - real_person: A living person depicted negatively is must_change (defamation). Neutral
   or historical reference to a public figure is generally clear. For the deceased,
   defamation does not survive but right of publicity does in several US states — say so.
-- address / url_domain / email / license_plate: If it resolves to something real, it is
-  must_change. Viewers visit URLs and dial numbers they see on screen. Absence of
-  evidence of a real referent is a reasonable basis for clear here.
+- address / url_domain / email: If it resolves to something real, it is must_change.
+  Viewers visit URLs and dial numbers they see on screen. These are all publicly
+  searchable, so absence of evidence of a real referent is a reasonable basis for clear.
+  Do NOT extend that reasoning to anything that is not publicly searchable.
 - print_media / logo_signage: Real masthead or logo shown neutrally is
   clear_with_caution; shown negatively is must_change.
 
