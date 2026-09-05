@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 
 from clearcut.agents.depiction import DepictionAgent
 from clearcut.core.coalesce import coalesce
+from clearcut.core.naming import merge_key as _normalise
 from clearcut.core.models import (
     AgentEvent,
     ClearableItem,
@@ -214,10 +215,6 @@ class BreakdownAgent:
             key=lambda i: (i.locations[0].page, i.category.value, i.value.lower()),
         )
 
-
-def _normalise(value: str) -> str:
-    v = re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
-    return re.sub(r"^(the|a|an)\s+", "", v)
 
 
 def _coerce_category(raw: str) -> ClearanceCategory | None:

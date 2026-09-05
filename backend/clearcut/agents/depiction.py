@@ -34,11 +34,11 @@ gives the reviewer a reason they can check.
 from __future__ import annotations
 
 import logging
-import re
 from typing import Callable
 
 from pydantic import BaseModel, Field
 
+from clearcut.core.naming import identity as _key
 from clearcut.core.models import AgentEvent, ClearableItem
 from clearcut.core.screenplay import ParsedScreenplay
 from clearcut.services.gemini_client import get_gemini
@@ -356,7 +356,3 @@ def _role_reason(roles: set[str]) -> str:
     named = sorted(roles & _NEGATIVE_ROLES) or sorted(roles)
     return "recorded in the script's wrongdoing as " + ", ".join(named)
 
-
-def _key(value: str) -> str:
-    """Match subjects across steps despite casing and punctuation drift."""
-    return re.sub(r"[^a-z0-9]+", "", value.lower())

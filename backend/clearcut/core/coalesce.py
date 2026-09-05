@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import re
 
+from clearcut.core.naming import person_words as _norm, tokens as _tokens
 from clearcut.core.models import ClearableItem, ClearanceCategory
 
 # --------------------------------------------------------------------------- #
@@ -72,14 +73,6 @@ _RANK = {c: i for i, c in enumerate(_PRIORITY)}
 _NAME_LIKE = {ClearanceCategory.CHARACTER_NAME, ClearanceCategory.REAL_PERSON}
 
 
-def _norm(value: str) -> str:
-    v = _HONORIFIC.sub("", value.strip())
-    v = re.sub(r"[^a-z0-9 ]+", " ", v.lower())
-    return re.sub(r"\s+", " ", v).strip()
-
-
-def _tokens(value: str) -> set[str]:
-    return {t for t in _norm(value).split() if len(t) > 1}
 
 
 def coalesce(items: list[ClearableItem]) -> tuple[list[ClearableItem], list[str]]:

@@ -22,21 +22,14 @@ target is sometimes the one that is wrong.
 from __future__ import annotations
 
 import json
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from clearcut.core.naming import tokens as _t, words as _norm
 from clearcut.core.models import ClearableItem, Verdict
 
 
-def _norm(s: str) -> str:
-    s = re.sub(r"[^a-z0-9 ]+", " ", str(s).lower())
-    return re.sub(r"\s+", " ", s).strip()
-
-
-def _tokens(s: str) -> set[str]:
-    return {t for t in _norm(s).split() if len(t) > 3}
 
 
 def match_score(expected: str, found: str, exp_cat: str = "", got_cat: str = "") -> float:
@@ -60,7 +53,7 @@ def match_score(expected: str, found: str, exp_cat: str = "", got_cat: str = "")
         # better than a single shared word would.
         score = 60.0 + 20.0 * (min(len(e), len(f)) / max(len(e), len(f)))
     else:
-        te, tf = _tokens(expected), _tokens(found)
+        te, tf = _t(expected, 4), _t(found, 4)
         if not (te and tf):
             return 0.0
         overlap = len(te & tf) / len(te | tf)

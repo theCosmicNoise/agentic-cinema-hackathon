@@ -28,9 +28,7 @@ from clearcut.agents.triage import TriageDecision
 from clearcut.core.models import (
     Adjudication,
     AgentEvent,
-    Citation,
     ClearableItem,
-    ClearanceCategory,
     ResearchEvidence,
     RiskLevel,
     Verdict,

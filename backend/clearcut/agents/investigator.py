@@ -180,7 +180,6 @@ supports."""
 # Runner
 # --------------------------------------------------------------------------- #
 import asyncio  # noqa: E402
-import hashlib  # noqa: E402
 from concurrent.futures import ThreadPoolExecutor  # noqa: E402
 from typing import Callable  # noqa: E402
 

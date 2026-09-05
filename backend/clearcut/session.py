@@ -22,7 +22,6 @@ the report can distinguish a machine ruling from an attorney's.
 
 from __future__ import annotations
 
-import json
 import logging
 import threading
 import uuid
