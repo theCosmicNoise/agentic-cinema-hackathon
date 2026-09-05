@@ -40,6 +40,7 @@ from clearcut.agents.research import ResearchAgent
 from clearcut.agents.substitute import SubstitutionAgent
 from clearcut.agents.triage import TriageAgent, TriageDecision
 from clearcut.core.config import get_settings
+from clearcut.core.consistency import reconcile
 from clearcut.core.ledger import ClearanceLedger
 from clearcut.core.models import (
     Adjudication,
@@ -411,6 +412,22 @@ def _run_adjudicate(session: Session, emit: EmitFn) -> None:
     decisions = _decisions(session)
     rulings = AdjudicationAgent(emit=emit).run(decisions, session.evidence)
     session.rulings.update(rulings)
+
+    # Rulings reached independently can contradict each other. Settle those by
+    # rule before a reviewer sees them, always upward.
+    for change in reconcile(session.active_items(), session.rulings):
+        emit(
+            AgentEvent(
+                agent="adjudicate",
+                phase="reconciled",
+                message=(
+                    f"{change.value}: raised from {change.was.value} to "
+                    f"{change.now.value} to match a related subject"
+                ),
+                payload={"item_id": change.item_id, "was": change.was.value,
+                         "now": change.now.value},
+            )
+        )
 
     blocking = sum(
         1

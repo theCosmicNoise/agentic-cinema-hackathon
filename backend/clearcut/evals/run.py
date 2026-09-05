@@ -13,6 +13,7 @@ from clearcut.agents.adjudicate import AdjudicationAgent
 from clearcut.agents.breakdown import BreakdownAgent
 from clearcut.agents.research import ResearchAgent
 from clearcut.agents.triage import TriageAgent
+from clearcut.core.consistency import reconcile
 from clearcut.core.screenplay import load_screenplay, parse_screenplay
 from clearcut.evals.harness import load_truth, render, score
 
@@ -43,6 +44,14 @@ def main() -> int:
         decisions = TriageAgent(emit=quiet).run(items)
         evidence = ResearchAgent(emit=quiet, deep_verify=False).run(decisions)
         adj = AdjudicationAgent(emit=quiet).run(decisions, evidence)
+        # Same reconciliation the pipeline applies. An eval that skips a
+        # production step is measuring something nobody ships.
+        for change in reconcile(items, adj):
+            quiet_msg = (
+                f"reconciled {change.value}: {change.was.value} -> {change.now.value}"
+            )
+            if not args.json:
+                print(f"  [adjudicate] {quiet_msg}", flush=True)
         rulings = {k: v.verdict for k, v in adj.items()}
 
     res = score(load_truth(truth_path), items, rulings)

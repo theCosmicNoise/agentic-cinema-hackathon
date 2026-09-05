@@ -30,6 +30,7 @@ from clearcut.agents.research import ResearchAgent
 from clearcut.agents.substitute import SubstitutionAgent
 from clearcut.agents.triage import TriageAgent
 from clearcut.core.config import get_settings
+from clearcut.core.consistency import reconcile
 from clearcut.core.ledger import ClearanceLedger
 from clearcut.core.models import (
     Adjudication,
@@ -138,6 +139,19 @@ def run_clearance(
     ).run(decisions)
     rulings = AdjudicationAgent(emit=emit).run(decisions, evidence)
     rulings.update(carried)
+
+    for change in reconcile(items, rulings):
+        emit(
+            AgentEvent(
+                agent="adjudicate",
+                phase="reconciled",
+                message=(
+                    f"{change.value}: raised from {change.was.value} to "
+                    f"{change.now.value} to match a related subject"
+                ),
+                payload={"item_id": change.item_id},
+            )
+        )
 
     subs = {}
     if substitute:

@@ -39,19 +39,45 @@ def _tokens(s: str) -> set[str]:
     return {t for t in _norm(s).split() if len(t) > 3}
 
 
-def matches(expected: str, found: str) -> bool:
-    """Whether a found subject is the planted one.
+def match_score(expected: str, found: str, exp_cat: str = "", got_cat: str = "") -> float:
+    """How well a found subject answers a planted one. 0 means no match.
 
-    Deliberately generous on surface form: the fixture writes
-    'Edward Hopper NIGHTHAWKS' and the agent returns 'Nighthawks'. Both name the
-    same subject and counting that as a miss would measure formatting, not
-    clearance.
+    Scored rather than boolean because assignment has to be global. Matching the
+    first candidate that looked plausible paired 'voss@zenithmotors.com' with
+    the character 'Cortland Voss' on the shared token "voss", which then pushed
+    the real email onto the character's entry and reported two disagreements
+    that were both artifacts of the matcher.
     """
     e, f = _norm(expected), _norm(found)
-    if e == f or e in f or f in e:
-        return True
-    te, tf = _tokens(expected), _tokens(found)
-    return bool(te and tf and (te & tf))
+    if not e or not f:
+        return 0.0
+
+    if e == f:
+        score = 100.0
+    elif e in f or f in e:
+        # Containment is strong, but scaled by how much of the longer string is
+        # accounted for, so "NIGHTHAWKS" answers "Edward Hopper NIGHTHAWKS"
+        # better than a single shared word would.
+        score = 60.0 + 20.0 * (min(len(e), len(f)) / max(len(e), len(f)))
+    else:
+        te, tf = _tokens(expected), _tokens(found)
+        if not (te and tf):
+            return 0.0
+        overlap = len(te & tf) / len(te | tf)
+        if overlap == 0:
+            return 0.0
+        # Token overlap alone is weak evidence and must never outrank
+        # containment, or a shared surname beats a real substring match.
+        score = 40.0 * overlap
+
+    if exp_cat and got_cat:
+        score += 12.0 if exp_cat == got_cat else -6.0
+    return score
+
+
+def matches(expected: str, found: str) -> bool:
+    """Kept for callers that only need a yes or no."""
+    return match_score(expected, found) >= 20.0
 
 
 @dataclass
@@ -160,25 +186,41 @@ def score(
 ) -> EvalResult:
     """Score a run against a fixture's planted items."""
     res = EvalResult(fixture=truth.get("script", "?"), total_found=len(items))
-    claimed: set[str] = set()
+    planted = truth.get("planted_items", [])
 
-    for planted in truth.get("planted_items", []):
-        r = ItemResult(
-            expected=planted["value"],
-            category=planted.get("category", ""),
-            expected_verdict=planted.get("expected_verdict"),
-            expected_negative=planted.get("expected_negative"),
-        )
+    # Score every pair, then assign best-first so a strong match is never
+    # displaced by a weaker one that happened to be considered earlier.
+    pairs = []
+    for pi, p in enumerate(planted):
         for it in items:
-            if it.id in claimed:
-                continue
-            if matches(planted["value"], it.value):
-                r.found_as = it.value
-                r.actual_negative = it.is_depicted_negatively
-                claimed.add(it.id)
-                if rulings and it.id in rulings:
-                    r.actual_verdict = rulings[it.id].value
-                break
+            s = match_score(p["value"], it.value, p.get("category", ""), it.category.value)
+            if s >= 20.0:
+                pairs.append((s, pi, it))
+    pairs.sort(key=lambda x: -x[0])
+
+    taken_planted: set[int] = set()
+    claimed: set[str] = set()
+    assigned: dict[int, Any] = {}
+    for s, pi, it in pairs:
+        if pi in taken_planted or it.id in claimed:
+            continue
+        taken_planted.add(pi)
+        claimed.add(it.id)
+        assigned[pi] = it
+
+    for pi, p in enumerate(planted):
+        r = ItemResult(
+            expected=p["value"],
+            category=p.get("category", ""),
+            expected_verdict=p.get("expected_verdict"),
+            expected_negative=p.get("expected_negative"),
+        )
+        it = assigned.get(pi)
+        if it is not None:
+            r.found_as = it.value
+            r.actual_negative = it.is_depicted_negatively
+            if rulings and it.id in rulings:
+                r.actual_verdict = rulings[it.id].value
         res.items.append(r)
 
     res.extra_flags = [it.value for it in items if it.id not in claimed]
