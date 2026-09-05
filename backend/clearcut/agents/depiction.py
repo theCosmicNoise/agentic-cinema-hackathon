@@ -168,8 +168,9 @@ class _Judgement(BaseModel):
 class DepictionAgent:
     name = "depiction"
 
-    def __init__(self, emit: EmitFn | None = None):
+    def __init__(self, emit: EmitFn | None = None, passes: int = 1):
         self._emit = emit or (lambda e: None)
+        self._passes = max(1, passes)
 
     def run(
         self, script: ParsedScreenplay, items: list[ClearableItem]
@@ -177,8 +178,19 @@ class DepictionAgent:
         if not items:
             return items
 
-        acts = self._findings(script, items)
-        if acts is None:
+        # Single pass by default. Merging two passes was tried, on the theory
+        # that the step only omits and never invents, so a union should recover
+        # coverage for free. Measured, it was worse on every axis: the same
+        # entity comes back under different roles in different passes, the
+        # merged role set stops resolving cleanly, and White's variance went
+        # from zero to 5.4. The knob is kept because the reasoning still holds
+        # for a longer script where omission dominates, but the default is one.
+        acts = []
+        for _ in range(self._passes):
+            got = self._findings(script, items)
+            if got:
+                acts.extend(got)
+        if not acts:
             self._emit(
                 AgentEvent(
                     agent=self.name, phase="error",
@@ -191,7 +203,7 @@ class DepictionAgent:
             AgentEvent(
                 agent=self.name,
                 phase="findings",
-                message=f"Read {len(acts)} wrongful act(s) from the script",
+                message=f"Read {len(set(a.what for a in acts))} wrongful act(s) from the script",
                 payload={"acts": [a.what for a in acts]},
             )
         )
