@@ -25,6 +25,8 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
+from clearcut.core.blobs import LocalBlobs, get_blobs
+from clearcut.core.config import get_settings
 from clearcut.core.models import (
     Adjudication,
     ClearableItem,
@@ -49,9 +51,24 @@ def _depiction_key(item: ClearableItem) -> str:
 class ClearanceLedger:
     """Per-project clearance state, persisted as JSON."""
 
-    def __init__(self, project_id: str, root: Path):
+    def __init__(self, project_id: str, root: Path | None = None, store=None):
+        """`root` keeps the old call sites working and scopes local storage.
+
+        Passing `store` overrides both, which is how tests stay isolated from
+        each other and from whatever this deployment is really writing to.
+        """
         self.project_id = project_id
-        self.path = Path(root) / "ledger" / f"{project_id}.json"
+        # Keyed rather than pathed, so the same ledger works on a local disk
+        # and in a bucket without the caller knowing which.
+        self.key = f"ledger/{project_id}.json"
+        if store is not None:
+            self._blobs = store
+        elif root is not None and not get_settings().bucket:
+            # An explicit root with no bucket configured means local, and means
+            # that root rather than the process-wide default.
+            self._blobs = LocalBlobs(Path(root))
+        else:
+            self._blobs = get_blobs()
         self.entries: dict[str, LedgerEntry] = {}
         self._depiction: dict[str, str] = {}
         self.history: list[dict] = []
@@ -59,32 +76,30 @@ class ClearanceLedger:
 
     # ------------------------------------------------------------------ #
     def _load(self) -> None:
-        if not self.path.exists():
+        raw = self._blobs.read(self.key)
+        if raw is None:
             return
         try:
-            blob = json.loads(self.path.read_text())
-        except (json.JSONDecodeError, OSError) as exc:
+            blob = json.loads(raw)
+        except json.JSONDecodeError as exc:
             logger.warning("Ledger unreadable, starting fresh: %s", exc)
             return
-        for k, raw in (blob.get("entries") or {}).items():
+        for k, entry in (blob.get("entries") or {}).items():
             try:
-                self.entries[k] = LedgerEntry.model_validate(raw)
+                self.entries[k] = LedgerEntry.model_validate(entry)
             except Exception:  # noqa: BLE001, S112
                 continue
         self._depiction = blob.get("depiction") or {}
         self.history = blob.get("history") or []
 
     def save(self) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
         blob = {
             "project_id": self.project_id,
             "entries": {k: v.model_dump(mode="json") for k, v in self.entries.items()},
             "depiction": self._depiction,
             "history": self.history,
         }
-        tmp = self.path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(blob, indent=2, default=str))
-        tmp.rename(self.path)
+        self._blobs.write(self.key, json.dumps(blob, indent=2, default=str))
 
     # ------------------------------------------------------------------ #
     def plan_revision(

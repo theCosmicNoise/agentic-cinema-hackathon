@@ -46,6 +46,9 @@ class Settings(BaseModel):
     def model_chain(self) -> list[str]:
         return self.gemini_fallbacks if self.use_vertex else self.gemini_fallbacks_aistudio
     data_dir: Path = REPO_ROOT / "data"
+    # Set to a Cloud Storage bucket and the ledger and sessions live there
+    # instead of on the instance, which is what makes them survive a cold start.
+    bucket: str = ""
     log_level: str = "INFO"
 
     def require_parallel(self) -> str:
@@ -72,6 +75,7 @@ def get_settings() -> Settings:
         google_cloud_location=os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1"),
         use_vertex=os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "FALSE").upper() == "TRUE",
         data_dir=Path(os.environ.get("CLEARCUT_DATA_DIR", str(REPO_ROOT / "data"))),
+        bucket=os.environ.get("CLEARCUT_BUCKET", ""),
         log_level=os.environ.get("CLEARCUT_LOG_LEVEL", "INFO"),
     )
     s.data_dir.mkdir(parents=True, exist_ok=True)

@@ -4,6 +4,7 @@ parallel-web>=1.0.1
 # --- Google Cloud / Gemini (REQUIRED at runtime) ---
 google-adk>=1.0.0
 google-genai>=1.0.0
+google-cloud-storage>=2.18.0
 
 # --- API layer ---
 fastapi>=0.115.0

@@ -71,6 +71,16 @@ done
 # Vertex is the inference path, so the runtime account needs to call it. Without
 # this the container falls back to the AI Studio endpoint and every model call
 # fails on whatever prepay balance that key happens to have.
+# The ledger has to outlive an instance. Cloud Run's /tmp does not, so state
+# goes to a bucket; without one, a cold start silently empties the ledger.
+BUCKET="${PROJECT}-clearcut-state"
+echo "==> Ensuring state bucket gs://${BUCKET}"
+gcloud storage buckets create "gs://${BUCKET}" --project "${PROJECT}" \
+  --location "${REGION}" --uniform-bucket-level-access >/dev/null 2>&1 || true
+gcloud storage buckets add-iam-policy-binding "gs://${BUCKET}" \
+  --member="serviceAccount:${RUNTIME_SA}" \
+  --role=roles/storage.objectAdmin --project "${PROJECT}" >/dev/null 2>&1 || true
+
 echo "==> Granting Vertex AI access to the runtime service account"
 gcloud projects add-iam-policy-binding "${PROJECT}" \
   --member="serviceAccount:${RUNTIME_SA}" \
@@ -87,7 +97,7 @@ gcloud run deploy "${SERVICE}" \
   --timeout 900 \
   --concurrency 8 \
   --max-instances 4 \
-  --set-env-vars "GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_LOCATION=${REGION},GOOGLE_GENAI_USE_VERTEXAI=TRUE,CLEARCUT_DATA_DIR=/tmp/clearcut" \
+  --set-env-vars "GOOGLE_CLOUD_PROJECT=${PROJECT},GOOGLE_CLOUD_LOCATION=${REGION},GOOGLE_GENAI_USE_VERTEXAI=TRUE,CLEARCUT_DATA_DIR=/tmp/clearcut,CLEARCUT_BUCKET=${BUCKET}" \
   --set-secrets "PARALLEL_API_KEY=clearcut-parallel-key:latest,GOOGLE_API_KEY=clearcut-google-key:latest"
 
 URL="$(gcloud run services describe "${SERVICE}" --project "${PROJECT}" --region "${REGION}" --format='value(status.url)')"

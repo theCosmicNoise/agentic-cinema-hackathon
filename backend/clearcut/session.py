@@ -38,6 +38,7 @@ from clearcut.agents.investigator import InvestigatorAgent
 from clearcut.agents.research import ResearchAgent
 from clearcut.agents.substitute import SubstitutionAgent
 from clearcut.agents.triage import TriageAgent, TriageDecision
+from clearcut.core.blobs import LocalBlobs, get_blobs
 from clearcut.core.config import get_settings
 from clearcut.core.consistency import reconcile
 from clearcut.core.ledger import ClearanceLedger
@@ -171,29 +172,34 @@ class Session(BaseModel):
 class SessionStore:
     """Sessions on disk, one JSON file each."""
 
-    def __init__(self, root: Path):
-        self.dir = Path(root) / "sessions"
-        self.dir.mkdir(parents=True, exist_ok=True)
+    def __init__(self, root: Path | None = None, store=None):
+        # Same arrangement as the ledger: an explicit root scopes local storage
+        # for tests, and everything else follows whatever this deployment uses.
+        if store is not None:
+            self._blobs = store
+        elif root is not None and not get_settings().bucket:
+            self._blobs = LocalBlobs(Path(root))
+        else:
+            self._blobs = get_blobs()
         self._lock = threading.Lock()
 
-    def _path(self, sid: str) -> Path:
-        return self.dir / f"{sid}.json"
+    @staticmethod
+    def _key(sid: str) -> str:
+        return f"sessions/{sid}.json"
 
     def get(self, sid: str) -> Session | None:
-        p = self._path(sid)
-        if not p.exists():
+        raw = self._blobs.read(self._key(sid))
+        if raw is None:
             return None
         try:
-            return Session.model_validate_json(p.read_text())
+            return Session.model_validate_json(raw)
         except Exception as exc:  # noqa: BLE001
             logger.warning("session %s unreadable: %s", sid, exc)
             return None
 
     def put(self, s: Session) -> None:
         with self._lock:
-            tmp = self._path(s.id).with_suffix(".tmp")
-            tmp.write_text(s.model_dump_json(indent=2))
-            tmp.rename(self._path(s.id))
+            self._blobs.write(self._key(s.id), s.model_dump_json(indent=2))
 
     def list(self) -> list[dict[str, Any]]:
         """Every past run, newest first, with enough detail to choose one.
@@ -204,8 +210,14 @@ class SessionStore:
         machine's.
         """
         out = []
-        for p in sorted(self.dir.glob("*.json"), key=lambda x: x.stat().st_mtime, reverse=True):
-            s = self.get(p.stem)
+        keys = self._blobs.list("sessions")
+        # Newest first. Modification time is what a reviewer means by "the run
+        # I was last working on", not creation time.
+        keys.sort(key=lambda k: self._blobs.modified(k) or datetime.min.replace(tzinfo=timezone.utc),
+                  reverse=True)
+        for key in keys:
+            sid = key.rsplit("/", 1)[-1].removesuffix(".json")
+            s = self.get(sid)
             if not s:
                 continue
 
@@ -231,9 +243,7 @@ class SessionStore:
                     "draft": s.script.draft_label,
                     "pages": s.script.page_count,
                     "created_at": s.created_at,
-                    "updated_at": datetime.fromtimestamp(
-                        p.stat().st_mtime, tz=timezone.utc
-                    ),
+                    "updated_at": self._blobs.modified(key) or s.created_at,
                     "items": len(s.items),
                     "stages_done": len(done),
                     "stages_total": len(STAGE_ORDER),
@@ -248,11 +258,7 @@ class SessionStore:
         return out
 
     def delete(self, sid: str) -> bool:
-        p = self._path(sid)
-        if not p.exists():
-            return False
-        p.unlink()
-        return True
+        return self._blobs.delete(self._key(sid))
 
 
 # --------------------------------------------------------------------------- #
