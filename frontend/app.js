@@ -381,7 +381,17 @@ function renderDetail() {
     d.append(t);
   }
 
-  if (st.status === 'pending' || st.status === 'error') d.append(runPrompt(meta));
+  if (st.status === 'running') {
+    // Started earlier and still going, most likely in a tab whose stream died.
+    // Offering a Run button here is what produced the 409.
+    const box = el('div','gate');
+    box.append(el('div','ask',
+      'This step is already running on the server. It will appear here as soon as it finishes.'));
+    const b = el('button','btn','Waiting…'); b.disabled = true;
+    box.append(b);
+    d.append(box);
+    if (!S.running) { S.running = true; waitForStage(S.view).then(() => { S.running = false; renderAll(); }); }
+  } else if (st.status === 'pending' || st.status === 'error') d.append(runPrompt(meta));
   else { d.append(bodyFor(S.view)); d.append(gate(meta, st)); }
 
   m.append(d);
@@ -462,12 +472,37 @@ function nextStage() {
 }
 
 /* ---------------- run a stage ---------------- */
+
+/* A stage that is still running on the server is not a stage you can start
+   again. Poll until it settles, so a dropped stream turns into a wait rather
+   than a second click and a 409. */
+async function waitForStage(id, { every = 3000, limit = 200 } = {}) {
+  for (let i = 0; i < limit; i++) {
+    let fresh;
+    try { fresh = await api(`/api/sessions/${S.sess.id}`); }
+    catch { await new Promise(r => setTimeout(r, every)); continue; }
+    S.sess = fresh;
+    const st = fresh.stages?.[id];
+    if (!st || st.status !== 'running') return st;
+    renderAll();
+    await new Promise(r => setTimeout(r, every));
+  }
+  return S.sess.stages?.[id];
+}
+
 async function runStage(id, deep) {
   S.running = true; S.runningStage = id; S.trace = [];
+  let streamBroke = false;
   renderAll();
   try {
     const q = deep ? '?deep=true' : '';
     const res = await fetch(`/api/sessions/${S.sess.id}/stage/${id}${q}`, { method:'POST' });
+    if (res.status === 409) {
+      // Already running from an earlier click whose stream dropped.
+      await waitForStage(id);
+      S.running = false; await loadHistory(); renderAll();
+      return;
+    }
     const rd = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
     while (true) {
       const { done, value } = await rd.read(); if (done) break;
@@ -483,7 +518,30 @@ async function runStage(id, deep) {
         } else if (msg.type === 'stage_done') S.sess = msg.data;
       }
     }
-  } catch (e) { S.error = e.message; }
+  } catch (e) {
+    // A dropped stream is not a failed stage. Substitute can run for minutes,
+    // and the connection can die after the work is already committed, so the
+    // error is recorded but the server is still asked what actually happened.
+    streamBroke = true;
+    console.warn('stage stream ended early:', e);
+  }
+
+  // The server is the authority on stage state, not the stream. Relying on the
+  // streamed payload alone meant a long stage could finish, be written to disk,
+  // and still render as "hasn't run yet" because the final message never
+  // arrived. Always reconcile before drawing.
+  try {
+    let st = (await api(`/api/sessions/${S.sess.id}`)).stages?.[id];
+    S.sess = await api(`/api/sessions/${S.sess.id}`);
+    // Long steps outlive their stream. Sit and wait rather than reporting
+    // nothing and inviting a second click the server will refuse.
+    if (st && st.status === 'running') st = await waitForStage(id);
+    if (st && st.status === 'error') S.error = st.error || 'This step failed.';
+    else S.error = null;
+  } catch (e) {
+    S.error = 'Lost contact with the server. Your work is saved; reload to pick it up.';
+  }
+
   S.running = false;
   await loadHistory();
   renderAll();
