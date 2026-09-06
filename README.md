@@ -1,161 +1,196 @@
 # CLEARCUT
 
-**Script clearance for film and television, run as a reviewed agent network.**
+Script clearance for film and television, run as a reviewed agent network.
 
-No carrier will bind Errors & Omissions coverage without a script clearance
-report, and no distributor will release a picture without E&O. The report is a
-line-by-line legal audit of the screenplay: every character name, business,
-brand, phone number, address, licence plate, domain, song, artwork, film clip,
-masthead and real-person reference is found, checked against trademark
-registries and live sources, and ruled on.
-
-Today that work is manual. It takes weeks, it costs accordingly, and it is
-invalidated by every revision. Scripts revise constantly, through white, blue,
-pink, yellow, green and goldenrod pages, and each colour means paying again.
-
-CLEARCUT runs the same audit as a network of agents. A person approves every
-step, and the result stays alive across revisions so the next draft only
-re-checks what actually changed.
+| | |
+|---|---|
+| **Track** | Parallel |
+| **Live** | _add hosted URL_ |
+| **Demo** | _add video URL_ |
+| **Stack** | Google ADK 2.8 · Gemini via Vertex AI · Parallel Search + Task API · FastAPI · Cloud Run |
+| **Licence** | MIT |
 
 ---
 
-## The pipeline, and where you sit in it
+## The problem
 
-Six agents, each stopping for a human before the next begins. A clearance
-report is a legal instrument that somebody signs, so nothing advances on the
-machine's own authority.
+No carrier binds Errors & Omissions coverage without a script clearance report.
+No distributor releases a picture without E&O. So every production buys one.
 
-```
-  screenplay (PDF, Fountain or text)
-        │
-        ▼
-  ┌──────────────┐
-  │  Breakdown   │  Gemini reads scene by scene and marks every element
-  └──────────────┘  carrying exposure, cited to its page
-        │           then a whole-script pass decides how the film treats it
-        ▼
-     ── you approve, and dismiss anything that is not a clearance subject ──
-        │
-        ▼
-  ┌──────────────┐
-  │   Triage     │  what an industry rule already settles is settled here,
-  └──────────────┘  free and exactly. The rest gets a research question
-        │           framed on the legal test for its category
-        ▼
-     ── you approve before it spends live lookups ──
-        │
-        ▼
-  ┌──────────────┐
-  │ Investigator │  an ADK agent holding Parallel's Search and Task APIs as
-  └──────────────┘  tools, choosing per subject how hard to look
-        │
-        ▼
-     ── you read the sources it came back with ──
-        │
-        ▼
-  ┌──────────────┐
-  │  Adjudicate  │  five verdicts, under the standard governing each category:
-  └──────────────┘  tarnishment, defamation, public domain, sync and master
-        │
-        ▼
-     ── you accept each ruling or overrule it. Yours is what prints ──
-        │
-        ▼
-  ┌──────────────┐
-  │  Substitute  │  proposes a replacement, then puts the replacement through
-  └──────────────┘  the same checks the original just failed
-        │
-        ▼
-     ── you take or leave each suggestion ──
-        │
-        ▼
-  ┌──────────────┐
-  │    Report    │  page-cited PDF, blocking items first, sources inline
-  └──────────────┘
-```
+The report is a line-by-line legal audit of the screenplay. A researcher reads
+every page and flags each character name, business, brand, phone number,
+address, licence plate, domain, song, artwork, film clip, masthead and
+real-person reference, then checks each against trademark registries and public
+records and rules on it.
 
-Your decisions are state, not annotations. A dismissed item never reaches
-research. An overruled verdict is what the report prints. A rejected
-replacement is not offered.
+It is done by hand. It takes weeks, and it is invalidated by every revision.
+Scripts revise constantly, through white, blue, pink, yellow, green and
+goldenrod pages, and each colour means commissioning the work again.
+
+Two things follow. Productions either pay repeatedly or shoot uncleared pages
+and hope. And the report, once delivered, is a dead document: it describes one
+draft and knows nothing about the next.
+
+## What this does
+
+Runs the same audit as an agent network, with a person approving every stage,
+and keeps the result as live state so the next draft only re-checks what
+actually changed.
 
 ---
 
-## Why the research step is load-bearing
+## Architecture
 
-No language model can produce a USPTO registration number from its weights. A
-ruling a carrier relies on has to trace back to a live source, so every verdict
-carries the citations behind it.
+```
+                    ┌──────────────────────────────────────┐
+  screenplay ──────▶│  screenplay.py                       │
+  PDF / Fountain    │  scene + page coordinates            │
+  / plain text      │  real PDF pagination, revision colour│
+                    └──────────────────┬───────────────────┘
+                                       │ scenes
+                    ┌──────────────────▼───────────────────┐
+   ①  BREAKDOWN     │  breakdown.py    per-scene, parallel  │──▶ Gemini
+                    │  depiction.py    whole-script, 2-step │──▶ Gemini ×2
+                    └──────────────────┬───────────────────┘
+                                       │ subjects, page-cited
+                        ══ human approves, dismisses noise ══
+                                       │
+                    ┌──────────────────▼───────────────────┐
+   ②  TRIAGE        │  rules.py        settled by rule      │  no model call
+                    │  triage.py       research objectives  │  no model call
+                    └──────────────────┬───────────────────┘
+                                       │ what still needs evidence
+                        ══ human approves the lookup spend ══
+                                       │
+                    ┌──────────────────▼───────────────────┐
+   ③  INVESTIGATE   │  investigator.py  ADK Agent + Runner  │──▶ Parallel
+                    │  picks its own tools per subject      │    Search / Task
+                    └──────────────────┬───────────────────┘
+                                       │ evidence + citations
+                        ══ human reads the sources ══
+                                       │
+                    ┌──────────────────▼───────────────────┐
+   ④  ADJUDICATE    │  adjudicate.py    five verdicts       │──▶ Gemini
+                    │  consistency.py   reconcile conflicts │  no model call
+                    └──────────────────┬───────────────────┘
+                                       │ rulings
+                        ══ human accepts or overrules ══
+                                       │
+                    ┌──────────────────▼───────────────────┐
+   ⑤  SUBSTITUTE    │  substitute.py    propose, then       │──▶ Gemini
+                    │  re-clear the proposal (closed loop)  │  + Parallel
+                    └──────────────────┬───────────────────┘
+                                       │ verified replacements
+                        ══ human takes or leaves each ══
+                                       │
+                    ┌──────────────────▼───────────────────┐
+   ⑥  REPORT        │  report.py        page-cited PDF      │  no model call
+                    │  ledger.py        commit to state     │
+                    └──────────────────────────────────────┘
+```
 
-The Investigator is a real ADK agent rather than a fixed lookup. It is given
-Parallel's capabilities as tools and decides per subject how much to spend.
-Measured on three deliberately different items:
+`session.py` owns the gates. A stage will not run until the one before it is
+approved, and reviewer decisions are state rather than annotations: a dismissed
+subject never reaches research, an overruled verdict is what the report prints,
+a rejected replacement is not offered.
+
+### Design decisions worth defending
+
+**Rules before models.** Anything knowable exactly is settled in `rules.py`
+without a model call. Nobody researches whether 555-0142 belongs to someone,
+because that block is reserved for fiction. Licence plates are also settled by
+rule, in the other direction: registration records are not public, a lookup
+returns nothing for every plate ever written, and reading that silence as
+clearance is how a real plate reaches the screen.
+
+**Depiction is decided once, globally, in two steps.** Exposure needs two
+things: something real behind the name, and the way the script treats it. A
+real company mentioned in passing is usually fine; the same company shown
+committing fraud is not. Per-scene extraction cannot see this, so one call
+records what the film depicts act by act with the role each entity plays, and a
+second judges subjects against that written finding.
+
+**The investigator is an agent, not a lookup.** Research depth is a judgement,
+so it belongs to the agent rather than a flag in the code.
+
+**Verdicts are reconciled before a human sees them.** Rulings reached
+independently can contradict each other. `consistency.py` settles those by
+rule, and only ever upward.
+
+---
+
+## Runtime use of the required services
+
+Both are imported and called on every clearance run. Exact locations:
+
+### Parallel (partner track)
+
+| | |
+|---|---|
+| Package | `parallel-web` 1.3.3 |
+| Import | [`services/parallel_research.py:20`](backend/clearcut/services/parallel_research.py#L20) |
+| Search API | [`services/parallel_research.py:77`](backend/clearcut/services/parallel_research.py#L77) `client.search(...)` |
+| Task API | [`services/parallel_research.py:137`](backend/clearcut/services/parallel_research.py#L137) `client.task_run.create(...)` |
+| Driven by | [`agents/investigator.py`](backend/clearcut/agents/investigator.py) |
+
+Parallel is not decoration here. A ruling a carrier relies on has to trace to a
+live source, and no language model produces a USPTO registration number from
+its weights. Every verdict in the report carries the citations behind it.
+
+The agent chooses which Parallel capability to use per subject. Measured:
 
 | Subject | Tools it chose | Sources |
 |---|---|---|
-| `Vandermeer`, a common surname, neutral | one search | 6 |
-| `Sweet Child O' Mine`, a needle-drop | search, then deep research | 13 |
-| `Northwestern Memorial`, shown falsifying records | search, then deep research | 20 |
+| `Vandermeer`, common surname, neutral depiction | Search | 6 |
+| `Sweet Child O' Mine`, needle-drop | Search, then Task | 13 |
+| `Northwestern Memorial`, shown falsifying records | Search, then Task | 20 |
 
-It traced the song's sync rights to publisher and administrator on its own. A
-common surname with a neutral depiction did not need that, and did not get it.
+It traced the song's sync rights to publisher and administrator unprompted. The
+common surname did not need that and did not get it.
 
-What the live web actually returned on the sample script:
+### Google Cloud
 
-| Item | Source retrieved |
+| | |
+|---|---|
+| Packages | `google-adk` 2.8.0, `google-genai` 2.21.0 |
+| ADK import | [`agents/investigator.py:186`](backend/clearcut/agents/investigator.py#L186) `Agent`, `Runner` |
+| ADK tools | [`agents/investigator.py:203`](backend/clearcut/agents/investigator.py#L203) three tools the agent selects between |
+| Gemini client | [`services/gemini_client.py:36`](backend/clearcut/services/gemini_client.py#L36) |
+| Vertex AI | [`services/gemini_client.py:63`](backend/clearcut/services/gemini_client.py#L63) `vertexai=True` |
+| Inference call | [`services/gemini_client.py:211`](backend/clearcut/services/gemini_client.py#L211) |
+| Callers | `breakdown.py`, `depiction.py`, `adjudicate.py`, `substitute.py` |
+| Deployment | Cloud Run, keys in Secret Manager ([`deploy.sh`](deploy.sh)) |
+
+---
+
+## What the live web actually returned
+
+From a run on the sample script:
+
+| Subject | Source retrieved |
 |---|---|
 | `Coca-Cola` | USPTO registration 0022406 via Justia |
 | `Sweet Child O' Mine` | songwriter and publisher records |
 | `Northwestern Memorial Hospital` | the hospital's own IP policy PDF |
 | `Nighthawks` | Art Institute of Chicago copyright records |
-| `Delaney Building` | a real building at 122 Stadium Way, Knoxville |
+| `Delaney Building` | a real building at 122 Stadium Way, Knoxville TN |
 
-That last one is the point of the product. "Delaney Building" was invented as a
-fictional Chicago address. It is a real building in Tennessee, and depicting it
-as the site of a fraud is exactly the exposure clearance exists to catch.
-
----
-
-## Depiction decides half of every ruling
-
-Exposure takes two things: something real behind the name, and the way the
-script treats it. A real company mentioned in passing is usually fine. The same
-company shown committing fraud is not. Same name, opposite outcome.
-
-Scene-parallel extraction is structurally blind to this. Read alone, one scene
-shows a man holding a printout. Read against the whole script it is a forged
-medical record, and the hospital named on it is being shown as the source.
-
-So depiction is decided globally, in two steps. One call records what the film
-actually depicts, act by act, naming every entity and the role it plays
-(perpetrator, instrument, employer, venue, misused, victim, opposing). A second
-judges subjects against that written finding rather than re-deriving the plot
-for each one.
-
-That structure was arrived at by measurement, not preference. A single call
-judging every subject at once scored between 62% and 100% on the same script,
-with the count of negatives swinging between 4 and 23. Neither majority nor
-union of repeated passes fixed it. Splitting the work dropped the standard
-deviation from 14.7 to 3.1, which is what made the remaining errors debuggable
-at all.
+The last one is the product in one line. "Delaney Building" was invented as a
+fictional Chicago address. It is a real building in Tennessee, and showing it as
+the site of a fraud is exactly the exposure clearance exists to catch.
 
 ---
 
 ## The revision ledger
 
-Clearance today is a dead document. It describes one draft and goes stale the
-moment pink pages ship, so productions either re-buy the whole report or shoot
-uncleared pages and hope.
+On a new draft, only the delta is re-checked. An entry carries forward when
+value, category **and depiction** are all unchanged.
 
-The ledger makes it state the production holds. On a new draft, only the delta
-is re-checked.
+That third condition is the one that makes it correct rather than merely fast.
+Reusing on the name alone would pass a defamation claim through a revision
+silently.
 
-The subtlety that makes this correct rather than merely fast: a verdict is a
-function of the subject *and* how the script treats it. An entry only carries
-forward when value, category **and depiction** are all unchanged. Reusing on
-the name alone would silently pass a defamation claim through a revision, which
-is the exact failure this exists to prevent.
-
-The sample Blue draft is built to test that. It applies three fixes the White
+The sample Blue draft tests exactly this. It applies three fixes the White
 report demanded, renames a street, and adds a scene where a named adjuster
 approves eleven fraudulent files under a company banner. The company's name
 never changes. Its exposure does.
@@ -164,118 +199,95 @@ never changes. Its exposure does.
 
 ## Measured results
 
-Run it yourself:
-
 ```bash
 PYTHONPATH=backend .venv/bin/python -m clearcut.evals.run the_long_odds_v1
 ```
 
-Four things are scored, ranked by what they cost when wrong.
+Five trials per draft, fresh cache each, full pipeline.
 
-**Recall** comes first. A missed subject never reaches a reviewer, never
-appears in the report, and surfaces later as an uninsurable film. A false
-positive costs somebody thirty seconds, so extra flags are reported separately
-as review load rather than as errors.
+| | White | Blue |
+|---|---|---|
+| **Recall** | **100%** (sd 0.0) | **100%** (sd 0.0) |
+| Depiction | 86.2% (sd 4.7) | 87.8% (sd 5.4) |
+| Verdict agreement | 68.9% (sd 2.7) | 67.1% (sd 2.9) |
 
-**Depiction** is next, because it decides half of every ruling.
+Recall is ranked first because a missed subject never reaches a reviewer and
+surfaces later as an uninsurable film. A false positive costs somebody thirty
+seconds, so extra flags are counted as review load, not error.
 
-**Verdict agreement** is last and deliberately not called accuracy. The
-expected verdicts are one experienced reading of standard practice, not fact.
-Where the system and the target disagree the target is sometimes the one that
-is wrong: an earlier version of the fixture said `NIGHTHAWKS` needed a licence,
-and the agent was right that it is public domain because copyright was never
-renewed after the initial 28-year term.
+Verdict agreement is deliberately not called accuracy. The expected verdicts are
+one experienced reading of standard practice, not fact. The residual is
+concentrated: four subjects fail in all five trials, which makes them standing
+disagreements that can be argued about rather than noise. `DR. ALAN REINHOLT`
+rules stricter than the fixture, which is the safe direction for clearance.
 
-Full numbers, method and caveats are in [docs/stability.md](docs/stability.md).
+The harness has twice corrected the fixture rather than the code. It also caught
+a recall regression nothing else would have: `MERIDIAN AUTO BODY`, the
+protagonist's own garage, was missing from four runs in five because it appears
+only in scene headings and the extraction prompt read "in a scene" as the action
+and dialogue. Tests passed, the UI worked, the report rendered, and a business
+the film is set in was absent from it.
 
-### An honest caveat
+Method and full history: [docs/stability.md](docs/stability.md).
 
-Re-running identical code across measurement rounds has moved depiction by
-around ten points. That swing is larger than the gap between some of the
-configurations that were chosen between, which means several tuning decisions
-during development were made inside the noise. Recall is the only figure that
-has held firm across every run.
+**Caveat.** Re-running identical code across measurement rounds has moved
+depiction by about ten points. That is larger than the gap between some
+configurations chosen during development, so several tuning decisions were made
+inside the noise. Recall is the only figure that has held across every run.
 
 ---
 
 ## Running it
 
-Requires Python 3.11+.
+Python 3.11+.
 
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r backend/requirements.txt
-cp .env.example .env     # then fill in your keys
+cp .env.example .env
 ```
 
 `.env`:
 
 ```
-PARALLEL_API_KEY=...          # platform.parallel.ai
-GOOGLE_CLOUD_PROJECT=...      # your GCP project
+PARALLEL_API_KEY=...            # platform.parallel.ai
+GOOGLE_CLOUD_PROJECT=...        # a billed GCP project
+GOOGLE_CLOUD_LOCATION=us-central1
 GOOGLE_GENAI_USE_VERTEXAI=TRUE
-GOOGLE_API_KEY=...            # only if not using Vertex
 ```
-
-Start the app:
 
 ```bash
 PYTHONPATH=backend .venv/bin/python -m uvicorn clearcut.api:app --port 8099
 ```
 
-Then open <http://127.0.0.1:8099/>, upload a screenplay or pick a sample, and
-work through the six steps.
+Open <http://127.0.0.1:8099/>, upload a screenplay or pick a sample, and work
+the six steps. Tests: `.venv/bin/python -m pytest backend/tests/ -q`.
 
-Tests:
+### Model access
 
-```bash
-.venv/bin/python -m pytest backend/tests/ -q
-```
-
-### A note on model access
-
-The Gemini free tier allows 20 requests per day per model, which will not
-complete a single pass. Routing through **Vertex AI** on a billed GCP project
-avoids that entirely and is the recommended path. Set
-`GOOGLE_GENAI_USE_VERTEXAI=TRUE` with your project id.
+Use **Vertex AI**. The Gemini free tier allows 20 requests per day per model,
+which will not complete one pass on a four-page script.
 
 Model availability differs between AI Studio and Vertex, so the fallback chain
-is selected per backend. Calls walk that chain, run under a hard wall-clock
+is chosen per backend. Calls walk that chain, run under a hard wall-clock
 deadline (the SDK's own timeout is not honoured on this path), demote models
 that fail repeatedly, and skip retries against per-day quota errors that cannot
-succeed. Model and research results are cached content-addressed on disk, so a
-repeat run is free and reproducible.
+succeed. Results are cached content-addressed on disk, so a repeat run is free
+and reproducible.
 
----
-
-## Deploying to Cloud Run
-
-Builds remotely with Cloud Build, so no local Docker daemon is needed. API keys
-go into Secret Manager and are mounted at runtime rather than baked into the
-image.
+## Deploying
 
 ```bash
 ./deploy.sh YOUR_PROJECT_ID us-central1
 ```
 
+Builds through Cloud Build, so no local Docker daemon. Keys go to Secret Manager
+and mount at runtime rather than being baked into the image.
+
 Cloud Run's filesystem is read-only apart from `/tmp`, so `CLEARCUT_DATA_DIR`
-points there. The ledger and caches therefore live for the life of an instance.
-That is fine for a demo; production would back them with Firestore or Cloud
-Storage, a change confined to `core/ledger.py` and `services/cache.py`.
-
----
-
-## Runtime integrations
-
-**Parallel Web Systems** in `services/parallel_research.py`, driven by
-`agents/investigator.py`. Search API for every researched subject, Task API
-when the agent decides a subject needs multi-hop verification. Called at
-runtime for each clearance subject.
-
-**Google Cloud** in `services/gemini_client.py`. Gemini via **Vertex AI** for
-extraction, depiction, adjudication and replacement generation. Agents are
-built on **Google ADK** (`google-adk`), which selects the research tools.
-Deployment targets **Cloud Run** with keys in **Secret Manager**.
+points there and the ledger lives for the life of an instance. Fine for a demo;
+production would back it with Firestore or Cloud Storage, a change confined to
+`core/ledger.py` and `services/cache.py`.
 
 ---
 
@@ -283,27 +295,39 @@ Deployment targets **Cloud Run** with keys in **Secret Manager**.
 
 ```
 backend/clearcut/
+  session.py              stage gates, approvals, reviewer decisions
+  api.py                  18 routes, SSE for live agent traces
+  pipeline.py             unattended run, same agents, no gates
   core/
-    models.py        domain model in the industry's vocabulary
-    screenplay.py    scene and page coordinates, real PDF pagination
-    rules.py         what is settled deterministically, and why
-    naming.py        the four name normalisations, in one place
-    coalesce.py      fold fragments, drop generic roles
-    consistency.py   reconcile rulings that contradict each other
-    buckets.py       how the review groups items for a production
-    ledger.py        clearance state across drafts
-  agents/
-    breakdown.py  depiction.py  triage.py
-    investigator.py  adjudicate.py  substitute.py  report.py
+    models.py             domain model in the industry's vocabulary
+    screenplay.py         scene/page coordinates, real PDF pagination
+    rules.py              what is settled without a model, and why
+    naming.py             the four name normalisations, in one place
+    coalesce.py           fold fragments, drop generic roles
+    consistency.py        reconcile contradictory rulings, upward only
+    buckets.py            how the review groups items for a production
+    ledger.py             clearance state across drafts
+  agents/                 breakdown depiction triage investigator
+                          adjudicate substitute report
   services/
-    gemini_client.py       fallback chain, deadlines, caching
-    parallel_research.py   Parallel Search and Task
-  session.py         the stage-gated run with human approval
-  evals/             the measurement harness
-frontend/            dependency-free; served by the same container
-assets/screenplays/  White and Blue drafts plus ground truth
-docs/stability.md    ten measured runs, method and caveats
+    gemini_client.py      fallback chain, deadlines, caching
+    parallel_research.py  Parallel Search + Task
+  evals/                  measurement harness and runner
+frontend/                 dependency-free, served by the same container
+assets/screenplays/       White and Blue drafts plus ground truth
+docs/stability.md         measured runs, method, caveats
 ```
+
+Roughly 7,000 lines across backend, frontend and evals.
+
+## Known limitations
+
+- Depiction sits near 87% and is the largest remaining source of error.
+- Four verdict disagreements are standing rather than random; some are
+  candidates for correcting the fixture rather than the code.
+- The ledger does not survive a Cloud Run cold start (see Deploying).
+- Ground truth covers two drafts of one screenplay. The numbers above describe
+  this fixture, not screenplays in general.
 
 ## Licence
 
