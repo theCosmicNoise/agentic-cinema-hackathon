@@ -5,8 +5,8 @@ Script clearance for film and television, run as a reviewed agent network.
 | | |
 |---|---|
 | **Track** | Parallel |
-| **Live** | <https://clearcut-3t7xps2s6q-uc.a.run.app> |
-| **Demo** | <https://youtu.be/YOUR-VIDEO> |
+| **Live** | <https://clearcut-61736830965.us-central1.run.app> |
+| **Demo** | _add video URL_ |
 | **Stack** | Google ADK 2.8 · Gemini via Vertex AI · Parallel Search + Task API · FastAPI · Cloud Run |
 | **Licence** | MIT |
 
