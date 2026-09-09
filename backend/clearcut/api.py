@@ -47,6 +47,9 @@ from clearcut.session import (
 
 logger = logging.getLogger(__name__)
 
+# How long a stream may sit silent before it sends a comment line.
+HEARTBEAT_SECONDS = 15.0
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCREENPLAY_DIR = REPO_ROOT / "assets" / "screenplays"
 FRONTEND_DIR = REPO_ROOT / "frontend"
@@ -356,9 +359,17 @@ async def advance(sid: str, stage_id: str, deep: bool = False) -> StreamingRespo
     threading.Thread(target=work, daemon=True).start()
 
     async def stream():
+        # The agent can spend minutes on a single subject, and a stream with no
+        # traffic in that window gets torn down by the browser's HTTP/3 stack
+        # (QUIC_TOO_MANY_RTOS). SSE comment lines keep the connection warm and
+        # are ignored by the client.
         loop = asyncio.get_running_loop()
         while True:
-            item = await loop.run_in_executor(None, events.get)
+            try:
+                item = await loop.run_in_executor(None, events.get, True, HEARTBEAT_SECONDS)
+            except queue.Empty:
+                yield ": keepalive\n\n"
+                continue
             if item is SENTINEL:
                 break
             if isinstance(item, AgentEvent):
@@ -464,7 +475,11 @@ async def clear(req: ClearRequest) -> StreamingResponse:
     async def stream():
         loop = asyncio.get_running_loop()
         while True:
-            item = await loop.run_in_executor(None, events.get)
+            try:
+                item = await loop.run_in_executor(None, events.get, True, HEARTBEAT_SECONDS)
+            except queue.Empty:
+                yield ": keepalive\n\n"
+                continue
             if item is SENTINEL:
                 break
             if isinstance(item, AgentEvent):
